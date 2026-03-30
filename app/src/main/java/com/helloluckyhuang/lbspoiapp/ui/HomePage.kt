@@ -20,6 +20,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,25 +29,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
+import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 import java.util.UUID
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HomePage(modifier: Modifier = Modifier) {
-    Text("你将去的地方")
-
-    var cardList by remember {
-        mutableStateOf(
-            emptyList<CardItem>()
-        )
-    }
+fun HomePage(modifier: Modifier = Modifier, viewModel: PoiProjectViewModel) {
+    val cardList by viewModel.projects.collectAsState()
 
     // 新建按钮弹窗
     var showDialog by remember { mutableStateOf(false) }
     var inputName by remember { mutableStateOf("") }
 
     // 长按后操作菜单对应的卡片
-    var selectedCard by remember { mutableStateOf<CardItem?>(null) }
+    var selectedCard by remember { mutableStateOf<PoiProjectData?>(null) }
     var showActionDialog by remember { mutableStateOf(false) }
 
     // 重命名弹窗
@@ -64,6 +61,7 @@ fun HomePage(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        Text("你将去的地方")
         // 添加项目按钮
         Button(
             onClick = {
@@ -82,7 +80,7 @@ fun HomePage(modifier: Modifier = Modifier) {
         ) {
             items(
                 items = cardList,
-                key = { it.id }
+                key = { it.uid }
             ) { item ->
                 Card(
                     modifier = Modifier
@@ -171,10 +169,7 @@ fun HomePage(modifier: Modifier = Modifier) {
                     onClick = {
                         val newName = renameInput.trim()
                         if (newName.isNotEmpty()) {
-                            val targetId = selectedCard!!.id
-                            cardList = cardList.map {
-                                if (it.id == targetId) it.copy(title = newName) else it
-                            }
+                            viewModel.updateProject(selectedCard!!.copy(title = newName))
                             showRenameDialog = false
                             selectedCard = null
                         }
@@ -207,8 +202,8 @@ fun HomePage(modifier: Modifier = Modifier) {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val targetId = selectedCard!!.id
-                        cardList = cardList.filter { it.id != targetId }
+                        val targetId = selectedCard!!.uid
+                        viewModel.deleteProject(selectedCard!!)
                         showDeleteDialog = false
                         selectedCard = null
                     }
@@ -249,10 +244,7 @@ fun HomePage(modifier: Modifier = Modifier) {
                     onClick = {
                         val text = inputName.trim()
                         if (text.isNotEmpty()) {
-                            cardList = cardList + CardItem(
-                                id = UUID.randomUUID().toString(),
-                                title = text
-                            )
+                            viewModel.addProject(text)
                         }
                         showDialog = false
                     }
@@ -273,8 +265,3 @@ fun HomePage(modifier: Modifier = Modifier) {
     }
 
 }
-
-data class CardItem(
-    val id: String,
-    val title: String
-)
