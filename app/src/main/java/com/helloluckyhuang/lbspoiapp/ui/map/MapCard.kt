@@ -1,12 +1,9 @@
-package com.helloluckyhuang.lbspoiapp.map
+package com.helloluckyhuang.lbspoiapp.ui.map
 
 import android.content.ComponentCallbacks
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
