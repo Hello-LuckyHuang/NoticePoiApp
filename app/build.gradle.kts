@@ -1,8 +1,23 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+}
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+fun requireLocalProperty(name: String): String {
+    return localProperties.getProperty(name)
+        ?: (project.findProperty(name) as String?)
+        ?: error("Missing required property: $name. Please set it in local.properties.")
 }
 
 android {
@@ -34,6 +49,23 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(requireLocalProperty("RELEASE_STORE_FILE"))
+            storePassword = requireLocalProperty("RELEASE_STORE_PASSWORD")
+            keyAlias = requireLocalProperty("RELEASE_KEY_ALIAS")
+            keyPassword = requireLocalProperty("RELEASE_KEY_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
+        }
     }
 }
 
