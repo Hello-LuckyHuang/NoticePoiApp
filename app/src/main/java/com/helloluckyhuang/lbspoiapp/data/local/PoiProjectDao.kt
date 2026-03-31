@@ -11,7 +11,7 @@ interface PoiProjectDao {
 
     // 插入
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(project: PoiProjectData)
+    suspend fun insert(project: PoiProjectData): Long
 
     // 删除
     @Delete
@@ -20,4 +20,8 @@ interface PoiProjectDao {
     // 更新
     @Update
     suspend fun update(project: PoiProjectData)
+
+    // 查询
+    @Query("SELECT * FROM poi_project WHERE uid = :uid LIMIT 1")
+    suspend fun getProjectById(uid: Int): PoiProjectData?
 }

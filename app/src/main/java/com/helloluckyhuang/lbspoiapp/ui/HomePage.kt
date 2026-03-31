@@ -35,7 +35,7 @@ import java.util.UUID
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HomePage(modifier: Modifier = Modifier, viewModel: PoiProjectViewModel) {
+fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> Unit) {
     val cardList by viewModel.projects.collectAsState()
 
     // 新建按钮弹窗
@@ -88,6 +88,7 @@ fun HomePage(modifier: Modifier = Modifier, viewModel: PoiProjectViewModel) {
                         .combinedClickable(
                             onClick = {
                                 // 点击卡片时执行的操作
+                                onNavigateToMapPage(item.uid)
                             },
                             onLongClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
