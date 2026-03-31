@@ -2,7 +2,6 @@ package com.helloluckyhuang.lbspoiapp.data.repository
 
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectDao
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
-import java.util.UUID
 
 class PoiProjectRepository(
     private val projectDao: PoiProjectDao

@@ -3,48 +3,115 @@
 import android.content.ComponentCallbacks
 import android.content.res.Configuration
 import android.os.Bundle
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.amap.api.maps2d.AMap
-import com.amap.api.maps2d.CameraUpdateFactory
+import com.amap.api.maps2d.AMapUtils
 import com.amap.api.maps2d.MapView
 import com.amap.api.maps2d.model.LatLng
+import com.amap.api.maps2d.model.Marker
 import com.amap.api.maps2d.model.MarkerOptions
+import com.amap.api.maps2d.model.MyLocationStyle
+import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPoint
+import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun MapCard() {
-    val lat = 39.9042
-    val lon = 116.4074
-    var clickedCoordinate by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+fun MapCard(
+    poiList: List<PoiPoint>,
+    viewModel: PoiProjectViewModel,
+    onMapClick: (latitude: Double, longitude: Double) -> Unit
+) {
+    val onMapClickState = rememberUpdatedState(onMapClick)
+    val poiMarkers = remember { mutableListOf<Marker>() }
+
+    var position by remember { mutableStateOf(Pair<Double, Double>(0.0, 0.0)) }
+    val sortedPoiList = remember(poiList, position) {
+        poiList.sortedBy { poi ->
+            val latLng1 = LatLng(position.first, position.second)
+            val latLng2 = LatLng(poi.latitude, poi.longitude)
+            AMapUtils.calculateLineDistance(latLng1,latLng2)
+        }.reversed()
+    }
 
     val context = LocalContext.current
     val mapView = remember {
         MapView(context).apply {
             onCreate(null)
             map.uiSettings.isZoomControlsEnabled = true
-            val defaultPoint = LatLng(lat, lon)
-            map.addMarker(MarkerOptions().position(defaultPoint).title("北京").snippet("DefaultMarker"))
+            map.uiSettings.isMyLocationButtonEnabled = true
+            map.setMyLocationStyle(MyLocationStyle().apply {
+                myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW_NO_CENTER)
+                interval(2000)
+            })
+            map.isMyLocationEnabled = true
+            map.setOnMyLocationChangeListener { location ->
+                position = Pair(location.latitude, location.longitude)
+            }
             map.setOnMapClickListener { point ->
-                clickedCoordinate = point.latitude to point.longitude
+                onMapClickState.value(point.latitude, point.longitude)
+                poiList.sortedBy { poi ->
+                    val latLng1 = LatLng(position.first, position.second)
+                    val latLng2 = LatLng(poi.latitude, poi.longitude)
+                    AMapUtils.calculateLineDistance(latLng1,latLng2)
+                }.reversed()
             }
         }
+    }
+
+    LaunchedEffect(poiList) {
+        val aMap = mapView.map
+        poiMarkers.forEach { it.remove() }
+        poiMarkers.clear()
+        poiList.forEach { point ->
+            val marker = aMap.addMarker(
+                MarkerOptions()
+                    .position(LatLng(point.latitude, point.longitude))
+                    .title("点 ${point.id}")
+            )
+            if (marker != null) {
+                poiMarkers.add(marker)
+            }
+        }
+
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -53,27 +120,80 @@ fun MapCard() {
             factory = { mapView }
         )
 
-        clickedCoordinate?.let { (clickLat, clickLon) ->
-            Card(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp)
+        var showSheet by remember { mutableStateOf(false) }
+
+        val sheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = false // 是否跳过半展开
+        )
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            Button(
+                onClick = { showSheet = true },
+                modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                Text(
-                    text = "纬度: %.6f, 经度: %.6f".format(clickLat, clickLon),
-                    modifier = Modifier.padding(12.dp)
-                )
+                Text("打开抽屉")
+            }
+
+            if (showSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = { showSheet = false },
+                    sheetState = sheetState
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = sortedPoiList,
+                            key = { it.id }
+                        ) { item ->
+                            Modifier
+                                .fillMaxWidth()
+                            Card(
+                                modifier = Modifier
+                                    .animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<androidx.compose.ui.unit.IntOffset>(
+                                            stiffness = Spring.StiffnessMediumLow,
+                                            visibilityThreshold = IntOffset.VisibilityThreshold
+                                        )
+                                    )
+                                    .combinedClickable(
+                                        onClick = {
+                                            // 点击卡片时执行的操作
+                                            viewModel.deletePoiToCurrentMap(item.id)
+                                        },
+                                        onLongClick = {
+
+                                        }
+                                    ),
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = "${item.latitude} ${item.longitude}",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    MapLifecycle(mapView, onCreate = { currentMapView, _ ->
-        currentMapView.map.apply {
-            val cameraUpdate = CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), 15F)
-            setMapLanguage(AMap.CHINESE)
-            moveCamera(cameraUpdate)
+    MapLifecycle(
+        mapView,
+        onCreate = { currentMapView, _ ->
+            currentMapView.map.setMapLanguage(AMap.CHINESE)
+        },
+        onDestroy = { currentMapView ->
+            poiMarkers.forEach { it.remove() }
+            poiMarkers.clear()
+            currentMapView.map.isMyLocationEnabled = false
         }
-    })
+    )
 }
 
 private fun MapView.componentCallbacks(): ComponentCallbacks =
@@ -94,7 +214,7 @@ fun MapLifecycle(
     onDestroy: (MapView) -> Unit = { _: MapView -> }
 ) {
     val context = LocalContext.current
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(context, lifecycle, mapView) {
         val mapLifecycleObserver = LifecycleEventObserver { _, event ->
             when (event) {

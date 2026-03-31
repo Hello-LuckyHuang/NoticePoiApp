@@ -13,7 +13,9 @@ class PoiApp : Application() {
             applicationContext,
             AppDatabase::class.java,
             "app_database"
-        ).build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
     }
 
     val poiProjectRepository: PoiProjectRepository by lazy {
