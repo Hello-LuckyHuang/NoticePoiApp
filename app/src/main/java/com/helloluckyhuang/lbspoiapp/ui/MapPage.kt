@@ -32,6 +32,7 @@ fun MapPage(
             Text("返回首页")
         }
         MapCard(
+            projectUid = projectUid,
             poiList = poiList,
             viewModel = viewModel,
             onMapClick = { latitude, longitude ->

@@ -56,11 +56,13 @@ import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MapCard(
+    projectUid: Int,
     poiList: List<PoiPoint>,
     viewModel: PoiProjectViewModel,
     onMapClick: (latitude: Double, longitude: Double) -> Unit
 ) {
     val onMapClickState = rememberUpdatedState(onMapClick)
+    val latestPoiListState = rememberUpdatedState(poiList)
     val poiMarkers = remember { mutableListOf<Marker>() }
 
     var position by remember { mutableStateOf(Pair<Double, Double>(0.0, 0.0)) }
@@ -85,8 +87,18 @@ fun MapCard(
             map.isMyLocationEnabled = true
             map.setOnMyLocationChangeListener { location ->
                 position = Pair(location.latitude, location.longitude)
+                val currentLatLng = LatLng(location.latitude, location.longitude)
+                latestPoiListState.value.forEach { poi ->
+                    if (!poi.isArrived) {
+                        val poiLatLng = LatLng(poi.latitude, poi.longitude)
+                        val distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
+                        if (distance < 100f) {
+                            viewModel.markPoiArrived(projectUid, poi.id)
+                        }
+                    }
+                }
             }
-            map.setOnMapClickListener { point ->
+            map.setOnMapLongClickListener { point ->
                 onMapClickState.value(point.latitude, point.longitude)
                 poiList.sortedBy { poi ->
                     val latLng1 = LatLng(position.first, position.second)
@@ -111,7 +123,6 @@ fun MapCard(
                 poiMarkers.add(marker)
             }
         }
-
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -158,11 +169,10 @@ fun MapCard(
                                     )
                                     .combinedClickable(
                                         onClick = {
-                                            // 点击卡片时执行的操作
-                                            viewModel.deletePoiToCurrentMap(item.id)
+                                            viewModel.markPoiArrived(projectUid, item.id)
                                         },
                                         onLongClick = {
-
+                                            viewModel.deletePoiToCurrentMap(item.id)
                                         }
                                     ),
                             ) {
@@ -174,6 +184,10 @@ fun MapCard(
                                         style = MaterialTheme.typography.titleMedium
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = if (item.isArrived) "已到达" else "未到达",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
                                 }
                             }
                         }
