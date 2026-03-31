@@ -31,7 +31,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
-import java.util.UUID
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -44,7 +43,7 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
 
     // 长按后操作菜单对应的卡片
     var selectedCard by remember { mutableStateOf<PoiProjectData?>(null) }
-    var showActionDialog by remember { mutableStateOf(false) }
+    var showCreateDialog by remember { mutableStateOf(false) }
 
     // 重命名弹窗
     var showRenameDialog by remember { mutableStateOf(false) }
@@ -93,7 +92,7 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
                             onLongClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 selectedCard = item
-                                showActionDialog = true
+                                showCreateDialog = true
                             }
                         ),
                 ) {
@@ -112,9 +111,9 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
     }
 
     // 弹窗
-    if (showActionDialog && selectedCard != null) {
+    if (showCreateDialog && selectedCard != null) {
         AlertDialog(
-            onDismissRequest = { showActionDialog = false },
+            onDismissRequest = { showCreateDialog = false },
             title = { Text("卡片操作") },
             text = {
                 Text("请选择对“${selectedCard!!.title}”执行的操作")
@@ -123,7 +122,7 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
                 TextButton(
                     onClick = {
                         renameInput = selectedCard!!.title
-                        showActionDialog = false
+                        showCreateDialog = false
                         showRenameDialog = true
                     }
                 ) {
@@ -134,7 +133,7 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
                 Row {
                     TextButton(
                         onClick = {
-                            showActionDialog = false
+                            showCreateDialog = false
                             showDeleteDialog = true
                         }
                     ) {
@@ -143,7 +142,7 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
 
                     TextButton(
                         onClick = {
-                            showActionDialog = false
+                            showCreateDialog = false
                         }
                     ) {
                         Text("取消")

@@ -14,8 +14,7 @@ import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 fun MapPage(
     viewModel: PoiProjectViewModel,
     projectUid: Int,
-    onNavigateToHomePage: () -> Unit,
-    onLocationUpdate: (latitude: Double, longitude: Double) -> Unit = { _, _ -> }
+    onNavigateToHomePage: () -> Unit
 ) {
     val poiList by viewModel.currentMapPoiList.collectAsState()
 
@@ -34,10 +33,7 @@ fun MapPage(
         MapCard(
             projectUid = projectUid,
             poiList = poiList,
-            viewModel = viewModel,
-            onMapClick = { latitude, longitude ->
-                viewModel.addPoiToCurrentMap(latitude, longitude)
-            }
+            viewModel = viewModel
         )
     }
 }

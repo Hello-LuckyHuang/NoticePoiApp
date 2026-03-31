@@ -18,12 +18,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -40,6 +43,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -58,10 +62,8 @@ import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 fun MapCard(
     projectUid: Int,
     poiList: List<PoiPoint>,
-    viewModel: PoiProjectViewModel,
-    onMapClick: (latitude: Double, longitude: Double) -> Unit
+    viewModel: PoiProjectViewModel
 ) {
-    val onMapClickState = rememberUpdatedState(onMapClick)
     val latestPoiListState = rememberUpdatedState(poiList)
     val poiMarkers = remember { mutableListOf<Marker>() }
 
@@ -73,6 +75,15 @@ fun MapCard(
             AMapUtils.calculateLineDistance(latLng1,latLng2)
         }.reversed()
     }
+
+    // 新建弹窗
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var inputName by remember { mutableStateOf("") }
+    var selectPoint by remember { mutableStateOf<LatLng?>(null) }
+
+    // 编辑弹窗
+    var showEditDialog by remember { mutableStateOf(false) }
+    var editPoiId by remember { mutableStateOf(0) }
 
     val context = LocalContext.current
     val mapView = remember {
@@ -99,12 +110,9 @@ fun MapCard(
                 }
             }
             map.setOnMapLongClickListener { point ->
-                onMapClickState.value(point.latitude, point.longitude)
-                poiList.sortedBy { poi ->
-                    val latLng1 = LatLng(position.first, position.second)
-                    val latLng2 = LatLng(poi.latitude, poi.longitude)
-                    AMapUtils.calculateLineDistance(latLng1,latLng2)
-                }.reversed()
+                showCreateDialog = true
+                inputName = ""
+                selectPoint = point
             }
         }
     }
@@ -125,12 +133,15 @@ fun MapCard(
         }
     }
 
+    // 地图主界面
     Box(modifier = Modifier.fillMaxSize()) {
+        // 地图
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { mapView }
         )
 
+        // 上拉抽屉
         var showSheet by remember { mutableStateOf(false) }
 
         val sheetState = rememberModalBottomSheetState(
@@ -150,6 +161,8 @@ fun MapCard(
                     onDismissRequest = { showSheet = false },
                     sheetState = sheetState
                 ) {
+
+                    // 点列表
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -172,7 +185,8 @@ fun MapCard(
                                             viewModel.markPoiArrived(projectUid, item.id)
                                         },
                                         onLongClick = {
-                                            viewModel.deletePoiToCurrentMap(item.id)
+                                            showEditDialog = true
+                                            editPoiId = item.id
                                         }
                                     ),
                             ) {
@@ -191,6 +205,77 @@ fun MapCard(
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    // 新建弹窗
+    if (showCreateDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreateDialog = false },
+            title = { Text("新建途径点") },
+            text = {
+                OutlinedTextField(
+                    value = inputName,
+                    onValueChange = { inputName = it },
+                    label = { Text("请输入途径点名称") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCreateDialog = false
+                        if (inputName.trim().isNotEmpty() && selectPoint != null) {
+                            viewModel.addPoiToCurrentMap(selectPoint!!.latitude, selectPoint!!.longitude)
+                            poiList.sortedBy { poi ->
+                                val latLng1 = LatLng(position.first, position.second)
+                                val latLng2 = LatLng(poi.latitude, poi.longitude)
+                                AMapUtils.calculateLineDistance(latLng1,latLng2)
+                            }.reversed()
+                        }
+                    }
+                ) {
+                    Text("确认")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showCreateDialog = false
+                    }
+                ) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    // 编辑弹窗
+    if (showEditDialog) {
+        Dialog(
+            onDismissRequest = { showEditDialog = false },
+        ) {
+            Card {
+                Column {
+                    Text("编辑途径点")
+                    TextButton(onClick = {
+                        showEditDialog = false
+                    }) {
+                        Text("重命名")
+                    }
+                    TextButton(onClick = {
+                        viewModel.deletePoiToCurrentMap(editPoiId)
+                        showEditDialog = false
+                    }) {
+                        Text("删除")
+                    }
+                    TextButton(onClick = {
+                        showEditDialog = false
+                    }) {
+                        Text("取消")
                     }
                 }
             }
