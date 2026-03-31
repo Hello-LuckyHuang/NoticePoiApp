@@ -34,4 +34,12 @@ class PoiProjectViewModel(
             repo.update(project)
         }
     }
+
+    fun getProjectById(uid: Int): PoiProjectData? {
+        var project: PoiProjectData? = null
+        viewModelScope.launch {
+            project = repo.getProjectById(uid)
+        }
+        return project
+    }
 }

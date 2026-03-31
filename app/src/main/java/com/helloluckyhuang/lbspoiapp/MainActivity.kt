@@ -17,7 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.helloluckyhuang.lbspoiapp.ui.HomePage
 import com.helloluckyhuang.lbspoiapp.ui.theme.LBSPOIAppTheme
-import com.helloluckyhuang.lbspoiapp.ui.viewmodel.MapPage
+import com.helloluckyhuang.lbspoiapp.ui.MapPage
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModelFactory
 
