@@ -21,4 +21,14 @@ class PoiApp : Application() {
     val poiProjectRepository: PoiProjectRepository by lazy {
         PoiProjectRepository(database.poiProjectDao())
     }
+
+    companion object {
+        lateinit var instance: PoiApp
+            private set
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+    }
 }

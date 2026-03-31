@@ -1,3 +1,20 @@
-/.gradle/
-/.idea/
-/.kotlin/
+﻿# Android / Gradle
+.gradle/
+build/
+**/build/
+.kotlin/
+
+# Local machine config
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# Signing keys / secrets
+*.jks
+*.keystore
+
+# OS
+.DS_Store
+Thumbs.db

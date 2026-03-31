@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -41,33 +42,38 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun Pages(modifier: Modifier = Modifier) {
-        val navController = rememberNavController()
-        NavHost(navController, startDestination = "main_page") {
-            composable("main_page") {
-                HomePage(
-                    viewModel = viewModel,
-                    onNavigateToMapPage = { uid ->
-                        navController.navigate("map_page/$uid")
-                    }
-                )
-            }
-            composable(
-                route = "map_page/{projectUid}",
-                arguments = listOf(
-                    navArgument("projectUid") { type = NavType.IntType }
-                )
-            ) { entry ->
-                val projectUid = entry.arguments?.getInt("projectUid") ?: -1
-                if (projectUid == -1) {
-                    return@composable
+        Box (modifier = modifier) {
+            val navController = rememberNavController()
+            NavHost(
+                navController = navController,
+                startDestination = "main_page"
+            ) {
+                composable("main_page") {
+                    HomePage(
+                        viewModel = viewModel,
+                        onNavigateToMapPage = { uid ->
+                            navController.navigate("map_page/$uid")
+                        }
+                    )
                 }
-                MapPage(
-                    viewModel = viewModel,
-                    projectUid = projectUid,
-                    onNavigateToHomePage = {
-                        navController.navigate("main_page")
+                composable(
+                    route = "map_page/{projectUid}",
+                    arguments = listOf(
+                        navArgument("projectUid") { type = NavType.IntType }
+                    )
+                ) { entry ->
+                    val projectUid = entry.arguments?.getInt("projectUid") ?: -1
+                    if (projectUid == -1) {
+                        return@composable
                     }
-                )
+                    MapPage(
+                        viewModel = viewModel,
+                        projectUid = projectUid,
+                        onNavigateToHomePage = {
+                            navController.navigate("main_page")
+                        }
+                    )
+                }
             }
         }
     }

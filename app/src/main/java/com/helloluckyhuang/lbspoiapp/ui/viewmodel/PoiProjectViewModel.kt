@@ -1,14 +1,17 @@
 package com.helloluckyhuang.lbspoiapp.ui.viewmodel
 
+import android.content.Context
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.helloluckyhuang.lbspoiapp.PoiApp
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
 import com.helloluckyhuang.lbspoiapp.data.repository.PoiProjectRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -98,6 +101,7 @@ class PoiProjectViewModel(
         }
         if (changed) {
             persistCurrentMapPoiList(projectUid)
+            playBeep()
         }
     }
 
@@ -156,4 +160,9 @@ class PoiProjectViewModel(
             }
         }.getOrDefault(emptyList())
     }
+}
+
+fun playBeep() {
+    val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+    toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 200)
 }

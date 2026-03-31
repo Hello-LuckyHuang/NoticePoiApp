@@ -1,8 +1,12 @@
 ﻿package com.helloluckyhuang.lbspoiapp.ui.map
 
+import android.Manifest
 import android.content.ComponentCallbacks
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Bundle
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
@@ -17,10 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.amap.api.maps2d.AMap
@@ -43,13 +49,16 @@ fun MapCard(
     val latestPoiListState = rememberUpdatedState(poiList)
     val poiMarkers = remember { mutableListOf<Marker>() }
 
-    var position by remember { mutableStateOf(Pair<Double, Double>(0.0, 0.0)) }
+    var position by remember { mutableStateOf<LatLng?>(null) }
     val sortedPoiList = remember(poiList, position) {
-        poiList.sortedBy { poi ->
-            val latLng1 = LatLng(position.first, position.second)
-            val latLng2 = LatLng(poi.latitude, poi.longitude)
-            AMapUtils.calculateLineDistance(latLng1,latLng2)
-        }.reversed()
+        val currentPosition = position
+        if (currentPosition == null) {
+            poiList
+        } else {
+            poiList.sortedBy { poi ->
+                AMapUtils.calculateLineDistance(currentPosition, LatLng(poi.latitude, poi.longitude))
+            }
+        }
     }
 
     // 新建弹窗
@@ -67,6 +76,36 @@ fun MapCard(
     var renameName by remember { mutableStateOf("") }
 
     val context = LocalContext.current
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        hasLocationPermission = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasLocationPermission) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
     val mapView = remember {
         MapView(context).apply {
             onCreate(null)
@@ -76,10 +115,20 @@ fun MapCard(
                 myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW_NO_CENTER)
                 interval(2000)
             })
-            map.isMyLocationEnabled = true
+            map.isMyLocationEnabled = false
             map.setOnMyLocationChangeListener { location ->
-                position = Pair(location.latitude, location.longitude)
-                val currentLatLng = LatLng(location.latitude, location.longitude)
+                val lat = location.latitude
+                val lng = location.longitude
+                val isValidCoordinate = lat in -90.0..90.0 &&
+                    lng in -180.0..180.0 &&
+                    !(lat == 0.0 && lng == 0.0)
+                if (!isValidCoordinate) {
+                    return@setOnMyLocationChangeListener
+                }
+
+                val currentLatLng = LatLng(lat, lng)
+                position = currentLatLng
+                // 标记靠近的点
                 latestPoiListState.value.forEach { poi ->
                     if (!poi.isArrived) {
                         val poiLatLng = LatLng(poi.latitude, poi.longitude)
@@ -96,6 +145,10 @@ fun MapCard(
                 selectPoint = point
             }
         }
+    }
+
+    LaunchedEffect(hasLocationPermission, mapView) {
+        mapView.map.isMyLocationEnabled = hasLocationPermission
     }
 
     LaunchedEffect(poiList) {
@@ -164,7 +217,7 @@ fun MapCard(
                                     )
                                     .combinedClickable(
                                         onClick = {
-                                            viewModel.markPoiArrived(projectUid, item.id)
+//                                            viewModel.markPoiArrived(projectUid, item.id)
                                         },
                                         onLongClick = {
                                             showEditDialog = true
@@ -175,14 +228,16 @@ fun MapCard(
                                 Column(
                                     modifier = Modifier.padding(16.dp)
                                 ) {
-                                    val currentLatLng = LatLng(position.first, position.second)
                                     val poiLatLng = LatLng(item.latitude, item.longitude)
-                                    val distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
-                                    val color = if (distance < item.arriveDistance) Color.Black else Color.Green
+                                    val distance = position?.let { currentLatLng ->
+                                        AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
+                                    }
+                                    val color = if (distance != null && distance < item.arriveDistance) Color.Green else Color.Black
                                     Text(
                                         text = item.label,
                                         style = MaterialTheme.typography.titleMedium,
-                                        color = color
+                                        color = color,
+                                        textDecoration = if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
@@ -191,7 +246,7 @@ fun MapCard(
                                         color = color
                                     )
                                     Text(
-                                        text = "距离: ${"%.2f".format(distance)} m",
+                                        text = if (distance == null) "距离: 定位中" else "距离: ${"%.2f".format(distance)} m",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = color
                                     )
@@ -235,11 +290,6 @@ fun MapCard(
                         showCreateDialog = false
                         if (inputName.trim().isNotEmpty() && selectPoint != null) {
                             viewModel.addPoiToCurrentMap(selectPoint!!.latitude, selectPoint!!.longitude, inputDistance.toDoubleOrNull() ?: 100.0, inputName)
-                            poiList.sortedBy { poi ->
-                                val latLng1 = LatLng(position.first, position.second)
-                                val latLng2 = LatLng(poi.latitude, poi.longitude)
-                                AMapUtils.calculateLineDistance(latLng1,latLng2)
-                            }.reversed()
                             inputName = ""
                             inputDistance = ""
                         }
