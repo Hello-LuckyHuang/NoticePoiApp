@@ -7,5 +7,6 @@ import java.util.UUID
 @Entity(tableName = "poi_project")
 data class PoiProjectData(
     @PrimaryKey(autoGenerate = true) val uid: Int = 0,
-    var title: String
+    var title: String = "",
+    var dataJson: String = "{}"
 )
