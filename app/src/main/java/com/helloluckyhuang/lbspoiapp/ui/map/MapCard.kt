@@ -8,45 +8,21 @@ import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.amap.api.maps2d.AMap
 import com.amap.api.maps2d.AMapUtils
 import com.amap.api.maps2d.MapView
@@ -79,11 +55,16 @@ fun MapCard(
     // 新建弹窗
     var showCreateDialog by remember { mutableStateOf(false) }
     var inputName by remember { mutableStateOf("") }
+    var inputDistance by remember { mutableStateOf("") }
     var selectPoint by remember { mutableStateOf<LatLng?>(null) }
 
     // 编辑弹窗
     var showEditDialog by remember { mutableStateOf(false) }
-    var editPoiId by remember { mutableStateOf(0) }
+    var editPoiId by remember { mutableIntStateOf(0) }
+
+    // 重命名弹窗
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var renameName by remember { mutableStateOf("") }
 
     val context = LocalContext.current
     val mapView = remember {
@@ -103,7 +84,7 @@ fun MapCard(
                     if (!poi.isArrived) {
                         val poiLatLng = LatLng(poi.latitude, poi.longitude)
                         val distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
-                        if (distance < 100f) {
+                        if (distance < poi.arriveDistance) {
                             viewModel.markPoiArrived(projectUid, poi.id)
                         }
                     }
@@ -175,6 +156,7 @@ fun MapCard(
                                 .fillMaxWidth()
                             Card(
                                 modifier = Modifier
+                                    .fillMaxWidth()
                                     .animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<androidx.compose.ui.unit.IntOffset>(
                                             stiffness = Spring.StiffnessMediumLow,
                                             visibilityThreshold = IntOffset.VisibilityThreshold
@@ -193,14 +175,25 @@ fun MapCard(
                                 Column(
                                     modifier = Modifier.padding(16.dp)
                                 ) {
+                                    val currentLatLng = LatLng(position.first, position.second)
+                                    val poiLatLng = LatLng(item.latitude, item.longitude)
+                                    val distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
+                                    val color = if (distance < item.arriveDistance) Color.Black else Color.Green
                                     Text(
-                                        text = "${item.latitude} ${item.longitude}",
-                                        style = MaterialTheme.typography.titleMedium
+                                        text = item.label,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = color
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                         text = if (item.isArrived) "已到达" else "未到达",
-                                        style = MaterialTheme.typography.bodyMedium
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = color
+                                    )
+                                    Text(
+                                        text = "距离: ${"%.2f".format(distance)} m",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = color
                                     )
                                 }
                             }
@@ -217,24 +210,38 @@ fun MapCard(
             onDismissRequest = { showCreateDialog = false },
             title = { Text("新建途径点") },
             text = {
-                OutlinedTextField(
-                    value = inputName,
-                    onValueChange = { inputName = it },
-                    label = { Text("请输入途径点名称") },
-                    singleLine = true
-                )
+                Column {
+                    OutlinedTextField(
+                        value = inputName,
+                        onValueChange = { inputName = it },
+                        label = { Text("请输入途径点名称") },
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = inputDistance,
+                        onValueChange = { input ->
+                            if (input.all { it.isDigit() }) {
+                                inputDistance = input
+                            }
+                        },
+                        label = { Text("请输入触发途径点距离(m)") },
+                        singleLine = true
+                    )
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showCreateDialog = false
                         if (inputName.trim().isNotEmpty() && selectPoint != null) {
-                            viewModel.addPoiToCurrentMap(selectPoint!!.latitude, selectPoint!!.longitude)
+                            viewModel.addPoiToCurrentMap(selectPoint!!.latitude, selectPoint!!.longitude, inputDistance.toDoubleOrNull() ?: 100.0, inputName)
                             poiList.sortedBy { poi ->
                                 val latLng1 = LatLng(position.first, position.second)
                                 val latLng2 = LatLng(poi.latitude, poi.longitude)
                                 AMapUtils.calculateLineDistance(latLng1,latLng2)
                             }.reversed()
+                            inputName = ""
+                            inputDistance = ""
                         }
                     }
                 ) {
@@ -263,6 +270,7 @@ fun MapCard(
                     Text("编辑途径点")
                     TextButton(onClick = {
                         showEditDialog = false
+                        showRenameDialog = true
                     }) {
                         Text("重命名")
                     }
@@ -280,6 +288,43 @@ fun MapCard(
                 }
             }
         }
+    }
+
+    // 重命名弹窗
+    if (showRenameDialog) {
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("重命名途径点") },
+            text = {
+                OutlinedTextField(
+                    value = renameName,
+                    onValueChange = { renameName = it },
+                    label = { Text("请输入途径点名称") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showRenameDialog = false
+                        if (renameName.trim().isNotEmpty() && selectPoint != null) {
+                            viewModel.updatePoiLabel(projectUid,editPoiId, renameName)
+                        }
+                    }
+                ) {
+                    Text("确认")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showRenameDialog = false
+                    }
+                ) {
+                    Text("取消")
+                }
+            }
+        )
     }
 
     MapLifecycle(

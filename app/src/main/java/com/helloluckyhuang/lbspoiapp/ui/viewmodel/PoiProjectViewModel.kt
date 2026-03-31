@@ -17,7 +17,9 @@ data class PoiPoint(
     val id: Int,
     val latitude: Double,
     val longitude: Double,
-    var isArrived: Boolean = false
+    var isArrived: Boolean = false,
+    val arriveDistance: Double = 100.0,
+    val label: String = ""
 )
 
 class PoiProjectViewModel(
@@ -56,10 +58,10 @@ class PoiProjectViewModel(
         }
     }
 
-    fun addPoiToCurrentMap(latitude: Double, longitude: Double) {
+    fun addPoiToCurrentMap(latitude: Double, longitude: Double, arriveDistance: Double, label: String) {
         _currentMapPoiList.update { poiList ->
             val nextId = (poiList.maxOfOrNull { it.id } ?: 0) + 1
-            poiList + PoiPoint(id = nextId, latitude = latitude, longitude = longitude)
+            poiList + PoiPoint(id = nextId, latitude = latitude, longitude = longitude, arriveDistance = arriveDistance, label = label)
         }
     }
 
@@ -67,6 +69,19 @@ class PoiProjectViewModel(
         _currentMapPoiList.update { poiList ->
             poiList.filterNot { it.id == poiId }
         }
+    }
+
+    fun updatePoiLabel(projectUid: Int, poiId: Int, label: String) {
+        _currentMapPoiList.update { poiList ->
+            poiList.map { poi ->
+                if (poi.id == poiId) {
+                    poi.copy(label = label)
+                } else {
+                    poi
+                }
+            }
+        }
+        persistCurrentMapPoiList(projectUid)
     }
 
     fun markPoiArrived(projectUid: Int, poiId: Int) {
@@ -112,6 +127,8 @@ class PoiProjectViewModel(
                     .put("latitude", point.latitude)
                     .put("longitude", point.longitude)
                     .put("isArrived", point.isArrived)
+                    .put("arriveDistance", point.arriveDistance)
+                    .put("label", point.label)
             )
         }
         return array.toString()
@@ -130,7 +147,9 @@ class PoiProjectViewModel(
                             latitude = item.optDouble("latitude"),
                             longitude = item.optDouble("longitude"),
                             isArrived = if (item.has("isArrived")) item.optBoolean("isArrived")
-                            else false
+                            else false,
+                            arriveDistance = if (item.has("arriveDistance")) item.optDouble("arriveDistance") else 100.0,
+                            label = if (item.has("label")) item.optString("label") else ""
                         )
                     )
                 }
