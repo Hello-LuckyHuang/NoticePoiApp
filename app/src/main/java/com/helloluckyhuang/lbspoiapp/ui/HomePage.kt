@@ -1,36 +1,31 @@
 package com.helloluckyhuang.lbspoiapp.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
+import kotlin.math.abs
+import kotlin.math.absoluteValue
+import kotlin.random.Random
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -60,7 +55,14 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text("你将去的地方")
+        Text(
+            text = "你将去的地方",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 1.dp, top = 24.dp, bottom = 12.dp),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
         // 添加项目按钮
         Button(
             onClick = {
@@ -68,44 +70,88 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
                 inputName = ""
             }
         ) {
-            Text("添加 Card")
+            Text("添加将去的地方")
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(
-                items = cardList,
-                key = { it.uid }
-            ) { item ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .combinedClickable(
-                            onClick = {
-                                // 点击卡片时执行的操作
-                                onNavigateToMapPage(item.uid)
-                            },
-                            onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                selectedCard = item
-                                showCreateDialog = true
-                            }
-                        ),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+        if (cardList.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(
+                    items = cardList,
+                    key = { it.uid }
+                ) { item ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(
+                                width = 1.dp,
+                                color = Color.LightGray,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .clip(RoundedCornerShape(8.dp))
+                            .combinedClickable(
+                                onClick = {
+                                    // 点击卡片时执行的操作
+                                    onNavigateToMapPage(item.uid)
+                                },
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    selectedCard = item
+                                    showCreateDialog = true
+                                }
+                            )
                     ) {
-                        Text(
-                            text = item.title,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(modifier = Modifier.fillMaxSize().padding(start = 16.dp)) {
+//                            Box(
+//                                modifier = Modifier
+//                                    .size(40.dp)
+//                                    .clip(RoundedCornerShape(8.dp))
+//                                    .background(Color.Red)
+//                                    .align(Alignment.CenterVertically),
+//                                contentAlignment = Alignment.Center
+//                            ) {
+//                                Text(
+//                                    modifier = Modifier.padding(8.dp),
+//                                    text = "${item.title[0]}",
+//                                    style = MaterialTheme.typography.titleMedium,
+//                                    color = Color.White,
+//                                )
+//                            }
+                            RandomProjectIcon(modifier = Modifier.align(Alignment.CenterVertically), name = item.title)
+                            Column(
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Text(
+                                    text = item.title,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
+
                     }
                 }
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    color = Color.Gray,
+                    fontSize = 2.5.em,
+                    text = "看起来没有要去的地方呢...\uD83D\uDE10"
+                )
+                Text(
+                    color = Color.Gray,
+                    fontSize = 2.em,
+                    text = "要不要新建一个呢？"
+                )
             }
         }
     }
@@ -263,5 +309,84 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
             }
         )
     }
+}
 
+@Composable
+fun RandomProjectIcon(
+    name: String,
+    modifier: Modifier = Modifier,
+    size: Int = 40,
+    cornerRadius: Int = 10,
+) {
+    val gradientColors = remember(name) {
+        generateStableGradient(name)
+    }
+
+    val displayChar = name
+        .trim()
+        .firstOrNull()
+        ?.uppercaseChar()
+        ?.toString()
+        ?: "?"
+
+    Box(
+        modifier = modifier
+            .size(size.dp)
+            .clip(RoundedCornerShape(cornerRadius.dp))
+            .background(
+                brush = Brush.linearGradient(gradientColors)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = displayChar,
+            color = Color.White,
+            fontSize = (size * 0.4f).sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+private fun generateStableGradient(seedText: String): List<Color> {
+    val seed = seedText.hashCode().absoluteValue
+    val random = Random(seed)
+
+    // 1. 主色相（0~360）
+    val baseHue = random.nextFloat() * 360f
+
+    // 2. 控制偏移范围（越小越柔和）
+    val hueOffset = 10f + random.nextFloat() * 15f // 10° ~ 25°
+
+    // 3. 两个颜色：同一色相附近
+    val hue1 = baseHue
+    val hue2 = (baseHue + hueOffset) % 360f
+
+    // 4. 适当变化饱和度 & 明度（增加层次）
+    val sat1 = 0.65f + random.nextFloat() * 0.2f
+    val sat2 = 0.65f + random.nextFloat() * 0.2f
+
+    val light1 = 0.55f + random.nextFloat() * 0.1f
+    val light2 = 0.65f + random.nextFloat() * 0.1f
+
+    return listOf(
+        hslToColor(hue1, sat1, light1),
+        hslToColor(hue2, sat2, light2)
+    )
+}
+
+private fun hslToColor(h: Float, s: Float, l: Float): Color {
+    val c = (1 - abs(2 * l - 1)) * s
+    val x = c * (1 - abs((h / 60f) % 2 - 1))
+    val m = l - c / 2
+
+    val (r, g, b) = when {
+        h < 60 -> Triple(c, x, 0f)
+        h < 120 -> Triple(x, c, 0f)
+        h < 180 -> Triple(0f, c, x)
+        h < 240 -> Triple(0f, x, c)
+        h < 300 -> Triple(x, 0f, c)
+        else -> Triple(c, 0f, x)
+    }
+
+    return Color(r + m, g + m, b + m)
 }

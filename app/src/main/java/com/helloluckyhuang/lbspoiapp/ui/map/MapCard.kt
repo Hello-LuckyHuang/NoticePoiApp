@@ -11,19 +11,24 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
@@ -211,63 +216,88 @@ fun MapCard(
                     sheetState = sheetState
                 ) {
 
-                    // 点列表
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(
-                            items = sortedPoiList,
-                            key = { it.id }
-                        ) { item ->
-                            Modifier
-                                .fillMaxWidth()
-                            Card(
-                                modifier = Modifier
+                    if (sortedPoiList.isNotEmpty()) {
+                        // 点列表
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(
+                                items = sortedPoiList,
+                                key = { it.id }
+                            ) { item ->
+                                Modifier
                                     .fillMaxWidth()
-                                    .animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<androidx.compose.ui.unit.IntOffset>(
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp)
+                                        .border(
+                                            width = 1.dp,
+                                            color = Color.LightGray,
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<androidx.compose.ui.unit.IntOffset>(
                                             stiffness = Spring.StiffnessVeryLow,
                                             dampingRatio = Spring.DampingRatioNoBouncy,
                                             visibilityThreshold = IntOffset.VisibilityThreshold
+                                        ))
+                                        .combinedClickable(
+                                            onClick = {
+//                                                viewModel.markPoiArrived(projectUid, item.id)
+                                            },
+                                            onLongClick = {
+                                                showEditDialog = true
+                                                editPoiId = item.id
+                                            }
                                         )
-                                    )
-                                    .combinedClickable(
-                                        onClick = {
-//                                            viewModel.markPoiArrived(projectUid, item.id)
-                                        },
-                                        onLongClick = {
-                                            showEditDialog = true
-                                            editPoiId = item.id
-                                        }
-                                    ),
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp)
                                 ) {
-                                    val poiLatLng = LatLng(item.latitude, item.longitude)
-                                    val distance = position?.let { currentLatLng ->
-                                        AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
+                                    Column(
+                                        modifier = Modifier.padding(16.dp)
+                                    ) {
+                                        val poiLatLng = LatLng(item.latitude, item.longitude)
+                                        val distance = position?.let { currentLatLng ->
+                                            AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
+                                        }
+                                        val color = if (distance != null && distance < item.arriveDistance) Color.Green else Color.Black
+                                        Text(
+                                            text = item.label,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = color,
+                                            textDecoration = if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = if (item.isArrived) "已到达" else "未到达",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = color
+                                        )
+                                        Text(
+                                            text = if (distance == null) "距离: 定位中" else "距离: ${"%.2f".format(distance)} m",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = color
+                                        )
                                     }
-                                    val color = if (distance != null && distance < item.arriveDistance) Color.Green else Color.Black
-                                    Text(
-                                        text = item.label,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = color,
-                                        textDecoration = if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = if (item.isArrived) "已到达" else "未到达",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = color
-                                    )
-                                    Text(
-                                        text = if (distance == null) "距离: 定位中" else "距离: ${"%.2f".format(distance)} m",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = color
-                                    )
                                 }
                             }
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Top
+                        ) {
+                            Text(
+                                color = Color.Gray,
+                                fontSize = 2.5.em,
+                                text = "目前没有创建途径点"
+                            )
+                            Text(
+                                color = Color.Gray,
+                                fontSize = 2.5.em,
+                                text = "请长按地图新建点以创建到达提醒...\uD83D\uDE10"
+                            )
                         }
                     }
                 }
