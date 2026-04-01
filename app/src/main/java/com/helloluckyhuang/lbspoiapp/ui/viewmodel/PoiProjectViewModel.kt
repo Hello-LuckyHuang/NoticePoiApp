@@ -174,7 +174,7 @@ class PoiProjectViewModel(
 
         val notification = NotificationCompat.Builder(context, notificationChannelId)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("LBS POI Notice")
+            .setContentTitle("接近预定点提醒")
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)

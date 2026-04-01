@@ -7,5 +7,6 @@ import androidx.room.PrimaryKey
 data class PoiProjectData(
     @PrimaryKey(autoGenerate = true) val uid: Int = 0,
     var title: String = "",
+    val createTime: Long = System.currentTimeMillis(),
     var dataJson: String = "{}"
 )

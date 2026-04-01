@@ -23,6 +23,9 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.random.Random
@@ -106,21 +109,6 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
                             )
                     ) {
                         Row(modifier = Modifier.fillMaxSize().padding(start = 16.dp)) {
-//                            Box(
-//                                modifier = Modifier
-//                                    .size(40.dp)
-//                                    .clip(RoundedCornerShape(8.dp))
-//                                    .background(Color.Red)
-//                                    .align(Alignment.CenterVertically),
-//                                contentAlignment = Alignment.Center
-//                            ) {
-//                                Text(
-//                                    modifier = Modifier.padding(8.dp),
-//                                    text = "${item.title[0]}",
-//                                    style = MaterialTheme.typography.titleMedium,
-//                                    color = Color.White,
-//                                )
-//                            }
                             RandomProjectIcon(modifier = Modifier.align(Alignment.CenterVertically), name = item.title)
                             Column(
                                 modifier = Modifier.padding(16.dp)
@@ -130,9 +118,13 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "创建时间: ${formatTime(item.createTime)}",
+                                    color = Color.Gray,
+                                    fontSize = 1.2.em
+                                )
                             }
                         }
-
                     }
                 }
             }
@@ -145,12 +137,12 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
                 Text(
                     color = Color.Gray,
                     fontSize = 2.5.em,
-                    text = "看起来没有要去的地方呢...\uD83D\uDE10"
+                    text = "请添加将去的地方\ud83d\ude1b"
                 )
                 Text(
                     color = Color.Gray,
                     fontSize = 2.em,
-                    text = "要不要新建一个呢？"
+                    text = "即将抵达时，我会提醒您！"
                 )
             }
         }
@@ -389,4 +381,9 @@ private fun hslToColor(h: Float, s: Float, l: Float): Color {
     }
 
     return Color(r + m, g + m, b + m)
+}
+
+private fun formatTime(time: Long): String {
+    val sdf = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault())
+    return sdf.format(Date(time))
 }

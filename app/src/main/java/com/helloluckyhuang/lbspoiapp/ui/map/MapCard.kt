@@ -5,6 +5,7 @@ import android.content.ComponentCallbacks
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Spring
@@ -17,6 +18,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,8 +26,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -43,8 +48,10 @@ import com.amap.api.maps2d.model.LatLng
 import com.amap.api.maps2d.model.Marker
 import com.amap.api.maps2d.model.MarkerOptions
 import com.amap.api.maps2d.model.MyLocationStyle
+import com.helloluckyhuang.lbspoiapp.R
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPoint
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -205,9 +212,14 @@ fun MapCard(
         Box(modifier = Modifier.fillMaxSize()) {
             Button(
                 onClick = { showSheet = true },
-                modifier = Modifier.align(Alignment.BottomCenter)
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 12.dp)
             ) {
-                Text("打开抽屉")
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_location),
+                    contentDescription = "打开抽屉"
+                )
             }
 
             if (showSheet) {
@@ -217,67 +229,85 @@ fun MapCard(
                 ) {
 
                     if (sortedPoiList.isNotEmpty()) {
-                        // 点列表
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(
-                                items = sortedPoiList,
-                                key = { it.id }
-                            ) { item ->
-                                Modifier
-                                    .fillMaxWidth()
-                                Card(
-                                    modifier = Modifier
+                        Column {
+                            Text(
+                                modifier = Modifier
+                                    .padding(start = 16.dp, bottom = 8.dp),
+                                color = Color.Gray,
+                                text = "提醒点列表"
+                            )
+                            // 点列表
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(
+                                    items = sortedPoiList,
+                                    key = { it.id }
+                                ) { item ->
+                                    Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp)
-                                        .border(
-                                            width = 1.dp,
-                                            color = Color.LightGray,
-                                            shape = RoundedCornerShape(8.dp)
-                                        )
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<androidx.compose.ui.unit.IntOffset>(
-                                            stiffness = Spring.StiffnessVeryLow,
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            visibilityThreshold = IntOffset.VisibilityThreshold
-                                        ))
-                                        .combinedClickable(
-                                            onClick = {
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp)
+                                            .border(
+                                                width = 1.dp,
+                                                color = Color.LightGray,
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<androidx.compose.ui.unit.IntOffset>(
+                                                stiffness = Spring.StiffnessVeryLow,
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                visibilityThreshold = IntOffset.VisibilityThreshold
+                                            ))
+                                            .combinedClickable(
+                                                onClick = {
 //                                                viewModel.markPoiArrived(projectUid, item.id)
-                                            },
-                                            onLongClick = {
-                                                showEditDialog = true
-                                                editPoiId = item.id
-                                            }
-                                        )
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(16.dp)
+                                                },
+                                                onLongClick = {
+                                                    showEditDialog = true
+                                                    editPoiId = item.id
+                                                }
+                                            )
                                     ) {
-                                        val poiLatLng = LatLng(item.latitude, item.longitude)
-                                        val distance = position?.let { currentLatLng ->
-                                            AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
+                                        Row(modifier = Modifier.fillMaxSize().padding(start = 16.dp)) {
+                                            val poiLatLng = LatLng(item.latitude, item.longitude)
+                                            val distance = position?.let { currentLatLng ->
+                                                AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
+                                            }
+
+                                            HeightLightIcon(
+                                                modifier = Modifier.align(Alignment.CenterVertically),
+                                                normalColor = Color.Gray,
+                                                blinkColor1 = Color.Green,
+                                                blinkColor2 = Color.Blue,
+                                                isBlinking = distance != null && distance < item.arriveDistance
+                                            )
+                                            Column(
+                                                modifier = Modifier.padding(16.dp)
+                                            ) {
+                                                val color = if (distance != null && distance < item.arriveDistance) Color(0, 128, 0) else Color.Black
+                                                Text(
+                                                    text = item.label,
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = color,
+                                                    textDecoration = if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
+                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    text = if (item.isArrived) "已到达" else "未到达",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = color
+                                                )
+                                                Text(
+                                                    text = if (distance == null) "距离: 定位中" else "距离: ${"%.2f".format(distance)} m",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = color
+                                                )
+                                            }
                                         }
-                                        val color = if (distance != null && distance < item.arriveDistance) Color.Green else Color.Black
-                                        Text(
-                                            text = item.label,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = color,
-                                            textDecoration = if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = if (item.isArrived) "已到达" else "未到达",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = color
-                                        )
-                                        Text(
-                                            text = if (distance == null) "距离: 定位中" else "距离: ${"%.2f".format(distance)} m",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = color
-                                        )
                                     }
                                 }
                             }
@@ -493,4 +523,74 @@ fun MapLifecycle(
             context.unregisterComponentCallbacks(callbacks)
         }
     }
+}
+
+@Composable
+fun HeightLightIcon(
+    modifier: Modifier = Modifier,
+    outerSize: Dp = 24.dp,
+    innerSize: Dp = 12.dp,
+    normalColor: Color,
+    blinkColor1: Color,
+    blinkColor2: Color,
+    isBlinking: Boolean,
+    blinkInterval: Long = 500L, // 每次闪烁间隔
+    innerLightenFactor: Float = 0.25f,
+) {
+    val latestIsBlinking by rememberUpdatedState(isBlinking)
+    val latestNormalColor by rememberUpdatedState(normalColor)
+    val latestBlinkColor1 by rememberUpdatedState(blinkColor1)
+    val latestBlinkColor2 by rememberUpdatedState(blinkColor2)
+
+    var currentColor by remember { mutableStateOf(normalColor) }
+    var blinkPhaseFirst by remember { mutableStateOf(true) }
+    var stopBlinkAtMs by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(Unit) {
+        val step = blinkInterval.coerceAtLeast(80L)
+        val stopDebounce = blinkInterval.coerceAtLeast(200L)
+        while (true) {
+            if (latestIsBlinking) {
+                stopBlinkAtMs = 0L
+                currentColor = if (blinkPhaseFirst) latestBlinkColor1 else latestBlinkColor2
+                blinkPhaseFirst = !blinkPhaseFirst
+                delay(step)
+            } else {
+                val now = SystemClock.elapsedRealtime()
+                if (stopBlinkAtMs == 0L) {
+                    stopBlinkAtMs = now + stopDebounce
+                }
+                if (now >= stopBlinkAtMs) {
+                    currentColor = latestNormalColor
+                    blinkPhaseFirst = true
+                }
+                delay(50L)
+            }
+        }
+    }
+
+    val innerColor = currentColor.lighter(innerLightenFactor)
+
+    Box(
+        modifier = modifier.size(outerSize),
+        contentAlignment = Alignment.Center
+    ) {
+        // 外圈
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(currentColor, CircleShape)
+        )
+
+        // 内圈
+        Box(
+            modifier = Modifier
+                .size(innerSize)
+                .background(innerColor, CircleShape)
+        )
+    }
+}
+
+private fun Color.lighter(factor: Float): Color {
+    return lerp(this, Color.White, factor.coerceIn(0f, 1f))
 }
