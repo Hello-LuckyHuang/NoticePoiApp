@@ -1,14 +1,22 @@
 package com.helloluckyhuang.lbspoiapp.ui.viewmodel
 
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
-import android.media.AudioManager
-import android.media.ToneGenerator
+import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.os.VibratorManager
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.helloluckyhuang.lbspoiapp.PoiApp
+import com.helloluckyhuang.lbspoiapp.R
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
 import com.helloluckyhuang.lbspoiapp.data.repository.PoiProjectRepository
 import kotlinx.coroutines.flow.*
@@ -28,6 +36,10 @@ data class PoiPoint(
 class PoiProjectViewModel(
     private val repo: PoiProjectRepository
 ) : ViewModel() {
+    private val notificationChannelId = "poi_notice_channel"
+    private val notificationChannelName = "POI Notice"
+    private var nextNotificationId = 1
+
     val projects = repo.projects.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -89,10 +101,12 @@ class PoiProjectViewModel(
 
     fun markPoiArrived(projectUid: Int, poiId: Int) {
         var changed = false
+        var changedPoi: PoiPoint? = null
         _currentMapPoiList.update { poiList ->
             poiList.map { poi ->
                 if (poi.id == poiId && !poi.isArrived) {
                     changed = true
+                    changedPoi = poi
                     poi.copy(isArrived = true)
                 } else {
                     poi
@@ -101,8 +115,84 @@ class PoiProjectViewModel(
         }
         if (changed) {
             persistCurrentMapPoiList(projectUid)
-            playBeep()
+            // 提醒用户正在接近预定点
+            playNoticeSound()
+            vibratePhone(500)
+            if (changedPoi != null) {
+                showNotification("现在正在接近 ${changedPoi.label}")
+            }
         }
+    }
+
+    // 播放提示音
+    fun playNoticeSound() {
+        val mediaPlayer = MediaPlayer.create(PoiApp.instance.applicationContext, R.raw.notice) ?: return
+        mediaPlayer.setOnCompletionListener { player ->
+            player.release()
+        }
+        mediaPlayer.setOnErrorListener { player, _, _ ->
+            player.release()
+            true
+        }
+        runCatching {
+            mediaPlayer.start()
+        }.onFailure {
+            mediaPlayer.release()
+        }
+    }
+
+    // 震动设备
+    fun vibratePhone(durationMs: Long = 200L) {
+        val context = PoiApp.instance.applicationContext
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
+        } ?: return
+
+        if (!vibrator.hasVibrator()) return
+
+        vibrator.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
+    // 弹出通知
+    fun showNotification(text: String) {
+        val context = PoiApp.instance.applicationContext
+        ensureNotificationChannel(context)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) return
+        }
+
+        val notification = NotificationCompat.Builder(context, notificationChannelId)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("LBS POI Notice")
+            .setContentText(text)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .build()
+
+        runCatching {
+            NotificationManagerCompat.from(context).notify(nextNotificationId++, notification)
+        }
+    }
+
+    private fun ensureNotificationChannel(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        val channel = NotificationChannel(
+            notificationChannelId,
+            notificationChannelName,
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Arrival reminder and system notice"
+        }
+        manager.createNotificationChannel(channel)
     }
 
     fun saveCurrentMapPoiList(projectUid: Int, onSaved: () -> Unit) {
@@ -160,9 +250,4 @@ class PoiProjectViewModel(
             }
         }.getOrDefault(emptyList())
     }
-}
-
-fun playBeep() {
-    val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
-    toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 200)
 }

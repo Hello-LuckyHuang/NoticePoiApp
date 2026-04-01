@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!--允许程序设置内置sd卡的读权限-->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!--允许程序振动-->
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <!--允许程序发送通知-->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!--允许程序设置内置sd卡的写权限-->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <!--允许程序获取网络状态-->

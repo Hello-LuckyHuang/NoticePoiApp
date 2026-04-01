@@ -32,6 +32,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.amap.api.maps2d.AMap
 import com.amap.api.maps2d.AMapUtils
 import com.amap.api.maps2d.MapView
+import com.amap.api.maps2d.model.Circle
+import com.amap.api.maps2d.model.CircleOptions
 import com.amap.api.maps2d.model.LatLng
 import com.amap.api.maps2d.model.Marker
 import com.amap.api.maps2d.model.MarkerOptions
@@ -48,6 +50,7 @@ fun MapCard(
 ) {
     val latestPoiListState = rememberUpdatedState(poiList)
     val poiMarkers = remember { mutableListOf<Marker>() }
+    val circleMarkers = remember { mutableListOf<Circle>() }
 
     var position by remember { mutableStateOf<LatLng?>(null) }
     val sortedPoiList = remember(poiList, position) {
@@ -154,15 +157,26 @@ fun MapCard(
     LaunchedEffect(poiList) {
         val aMap = mapView.map
         poiMarkers.forEach { it.remove() }
+        circleMarkers.forEach { it.remove() }
         poiMarkers.clear()
+        circleMarkers.clear()
         poiList.forEach { point ->
             val marker = aMap.addMarker(
                 MarkerOptions()
                     .position(LatLng(point.latitude, point.longitude))
                     .title("点 ${point.id}")
             )
-            if (marker != null) {
+            val circle = aMap.addCircle(
+                CircleOptions()
+                    .center(LatLng(point.latitude, point.longitude))
+                    .radius(point.arriveDistance)
+                    .fillColor(android.graphics.Color.argb(128, 50, 50, 255))
+                    .strokeColor(android.graphics.Color.argb(255, 10, 10, 255))
+                    .strokeWidth(2f)
+            )
+            if (marker != null && circle != null) {
                 poiMarkers.add(marker)
+                circleMarkers.add(circle)
             }
         }
     }
@@ -359,6 +373,7 @@ fun MapCard(
                         showRenameDialog = false
                         if (renameName.trim().isNotEmpty() && selectPoint != null) {
                             viewModel.updatePoiLabel(projectUid,editPoiId, renameName)
+                            renameName = ""
                         }
                     }
                 ) {
@@ -369,6 +384,7 @@ fun MapCard(
                 TextButton(
                     onClick = {
                         showRenameDialog = false
+                        renameName = ""
                     }
                 ) {
                     Text("取消")
