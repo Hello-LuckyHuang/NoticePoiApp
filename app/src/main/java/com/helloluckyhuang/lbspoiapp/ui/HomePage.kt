@@ -121,7 +121,7 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
                                 Text(
                                     text = "创建时间: ${formatTime(item.createTime)}",
                                     color = Color.Gray,
-                                    fontSize = 1.2.em
+                                    fontSize = 3.0.em
                                 )
                             }
                         }
@@ -136,12 +136,12 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
             ) {
                 Text(
                     color = Color.Gray,
-                    fontSize = 2.5.em,
+                    fontSize = 6.0.em,
                     text = "请添加将去的地方\ud83d\ude1b"
                 )
                 Text(
                     color = Color.Gray,
-                    fontSize = 2.em,
+                    fontSize = 5.5.em,
                     text = "即将抵达时，我会提醒您！"
                 )
             }

@@ -302,7 +302,7 @@ fun MapCard(
                                                     color = color
                                                 )
                                                 Text(
-                                                    text = if (distance == null) "距离: 定位中" else "距离: ${"%.2f".format(distance)} m",
+                                                    text = if (distance == null) "距离: 定位中" else "距离: ${if (distance < 1000) "%.2f m".format(distance) else "%.2f km".format(distance/1000)}",
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     color = color
                                                 )
@@ -320,12 +320,12 @@ fun MapCard(
                         ) {
                             Text(
                                 color = Color.Gray,
-                                fontSize = 2.5.em,
+                                fontSize = 3.5.em,
                                 text = "目前没有创建途径点"
                             )
                             Text(
                                 color = Color.Gray,
-                                fontSize = 2.5.em,
+                                fontSize = 3.5.em,
                                 text = "请长按地图新建点以创建到达提醒...\uD83D\uDE10"
                             )
                         }
@@ -437,8 +437,8 @@ fun MapCard(
                         showRenameDialog = false
                         if (renameName.trim().isNotEmpty() && selectPoint != null) {
                             viewModel.updatePoiLabel(projectUid,editPoiId, renameName)
-                            renameName = ""
                         }
+                        renameName = ""
                     }
                 ) {
                     Text("确认")
