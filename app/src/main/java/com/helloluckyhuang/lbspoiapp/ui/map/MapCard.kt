@@ -164,7 +164,8 @@ fun MapCard(
             val marker = aMap.addMarker(
                 MarkerOptions()
                     .position(LatLng(point.latitude, point.longitude))
-                    .title("点 ${point.id}")
+                    .title("点 ${point.label}")
+                    .snippet("接近距离：${point.arriveDistance}米")
             )
             val circle = aMap.addCircle(
                 CircleOptions()
