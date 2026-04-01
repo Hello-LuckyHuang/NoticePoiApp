@@ -8,9 +8,15 @@ import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,6 +47,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.amap.api.maps2d.AMap
 import com.amap.api.maps2d.AMapUtils
+import com.amap.api.maps2d.CameraUpdateFactory
 import com.amap.api.maps2d.MapView
 import com.amap.api.maps2d.model.Circle
 import com.amap.api.maps2d.model.CircleOptions
@@ -52,6 +59,8 @@ import com.helloluckyhuang.lbspoiapp.R
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPoint
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 import kotlinx.coroutines.delay
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -61,18 +70,26 @@ fun MapCard(
     viewModel: PoiProjectViewModel
 ) {
     val latestPoiListState = rememberUpdatedState(poiList)
-    val poiMarkers = remember { mutableListOf<Marker>() }
-    val circleMarkers = remember { mutableListOf<Circle>() }
+    val poiMarkersById = remember { mutableMapOf<Int, Marker>() }
+    val circleMarkersById = remember { mutableMapOf<Int, Circle>() }
+    val previousPoiSnapshotById = remember { mutableMapOf<Int, PoiPoint>() }
+    val reportedPoiIds = remember { mutableSetOf<Int>() }
 
-    var position by remember { mutableStateOf<LatLng?>(null) }
-    val sortedPoiList = remember(poiList, position) {
-        val currentPosition = position
-        if (currentPosition == null) {
-            poiList
+    val latestLocationRef = remember { AtomicReference<LatLng?>(null) }
+    val lastArrivalCheckAtMsRef = remember { AtomicLong(0L) }
+    var distanceByPoiIdForUi by remember { mutableStateOf<Map<Int, Float>>(emptyMap()) }
+    var sortedPoiIdsForUi by remember { mutableStateOf<List<Int>>(poiList.map { it.id }) }
+    var showSheet by remember { mutableStateOf(false) }
+
+    val sortedPoiList = remember(poiList, sortedPoiIdsForUi) {
+        if (poiList.isEmpty()) return@remember emptyList()
+        val poiById = poiList.associateBy { it.id }
+        val ordered = sortedPoiIdsForUi.mapNotNull { poiById[it] }
+        if (ordered.size == poiList.size) {
+            ordered
         } else {
-            poiList.sortedBy { poi ->
-                AMapUtils.calculateLineDistance(currentPosition, LatLng(poi.latitude, poi.longitude))
-            }
+            val orderedIdSet = ordered.map { it.id }.toSet()
+            ordered + poiList.filterNot { orderedIdSet.contains(it.id) }
         }
     }
 
@@ -131,6 +148,7 @@ fun MapCard(
                 interval(2000)
             })
             map.isMyLocationEnabled = false
+            map.moveCamera(CameraUpdateFactory.zoomTo(17F))
             map.setOnMyLocationChangeListener { location ->
                 val lat = location.latitude
                 val lng = location.longitude
@@ -142,15 +160,23 @@ fun MapCard(
                 }
 
                 val currentLatLng = LatLng(lat, lng)
-                position = currentLatLng
-                // 标记靠近的点
+                latestLocationRef.set(currentLatLng)
+
+                val now = SystemClock.elapsedRealtime()
+                val lastCheckAt = lastArrivalCheckAtMsRef.get()
+                if (now - lastCheckAt < 900L) return@setOnMyLocationChangeListener
+                lastArrivalCheckAtMsRef.set(now)
+
+                // 标记靠近的点（同一个点只上报一次，避免高频重复触发）
                 latestPoiListState.value.forEach { poi ->
-                    if (!poi.isArrived) {
-                        val poiLatLng = LatLng(poi.latitude, poi.longitude)
-                        val distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
-                        if (distance < poi.arriveDistance) {
-                            viewModel.markPoiArrived(projectUid, poi.id)
-                        }
+                    if (poi.isArrived || reportedPoiIds.contains(poi.id)) {
+                        return@forEach
+                    }
+                    val poiLatLng = LatLng(poi.latitude, poi.longitude)
+                    val distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
+                    if (distance < poi.arriveDistance) {
+                        reportedPoiIds.add(poi.id)
+                        viewModel.markPoiArrived(projectUid, poi.id)
                     }
                 }
             }
@@ -162,35 +188,121 @@ fun MapCard(
         }
     }
 
+    LaunchedEffect(Unit) {
+        while (true) {
+            val now = SystemClock.elapsedRealtime()
+            val phaseIn10s = now % 10_000L
+            val delayToThirdSecond = if (phaseIn10s <= 3_000L) {
+                3_000L - phaseIn10s
+            } else {
+                13_000L - phaseIn10s
+            }
+            delay(delayToThirdSecond)
+
+            val currentLocationForDistance = latestLocationRef.get()
+            val currentPoiListForDistance = latestPoiListState.value
+            distanceByPoiIdForUi = if (currentLocationForDistance == null) {
+                emptyMap()
+            } else {
+                buildMap(currentPoiListForDistance.size) {
+                    currentPoiListForDistance.forEach { poi ->
+                        put(
+                            poi.id,
+                            AMapUtils.calculateLineDistance(
+                                currentLocationForDistance,
+                                LatLng(poi.latitude, poi.longitude)
+                            )
+                        )
+                    }
+                }
+            }
+
+            val nowAfterDistance = SystemClock.elapsedRealtime()
+            val phaseAfterDistance = nowAfterDistance % 10_000L
+            val delayToSeventhSecond = if (phaseAfterDistance <= 7_000L) {
+                7_000L - phaseAfterDistance
+            } else {
+                17_000L - phaseAfterDistance
+            }
+            delay(delayToSeventhSecond)
+
+            val currentLocationForSort = latestLocationRef.get()
+            val currentPoiListForSort = latestPoiListState.value
+            sortedPoiIdsForUi = if (currentLocationForSort == null) {
+                currentPoiListForSort.map { it.id }
+            } else {
+                currentPoiListForSort
+                    .sortedBy { poi ->
+                        AMapUtils.calculateLineDistance(
+                            currentLocationForSort,
+                            LatLng(poi.latitude, poi.longitude)
+                        )
+                    }
+                    .map { it.id }
+            }
+        }
+    }
+
     LaunchedEffect(hasLocationPermission, mapView) {
         mapView.map.isMyLocationEnabled = hasLocationPermission
     }
 
     LaunchedEffect(poiList) {
+        val validPoiIds = poiList.map { it.id }.toSet()
+        reportedPoiIds.retainAll(validPoiIds)
+        val currentSortedIds = sortedPoiIdsForUi
+        sortedPoiIdsForUi = currentSortedIds.filter { validPoiIds.contains(it) } +
+            poiList.map { it.id }.filterNot { currentSortedIds.contains(it) }
+        distanceByPoiIdForUi = distanceByPoiIdForUi.filterKeys { validPoiIds.contains(it) }
+
         val aMap = mapView.map
-        poiMarkers.forEach { it.remove() }
-        circleMarkers.forEach { it.remove() }
-        poiMarkers.clear()
-        circleMarkers.clear()
+        val removedPoiIds = previousPoiSnapshotById.keys - validPoiIds
+        removedPoiIds.forEach { poiId ->
+            poiMarkersById.remove(poiId)?.remove()
+            circleMarkersById.remove(poiId)?.remove()
+            previousPoiSnapshotById.remove(poiId)
+        }
+
         poiList.forEach { point ->
-            val marker = aMap.addMarker(
-                MarkerOptions()
-                    .position(LatLng(point.latitude, point.longitude))
-                    .title("点 ${point.label}")
-                    .snippet("接近距离：${point.arriveDistance}米")
-            )
-            val circle = aMap.addCircle(
-                CircleOptions()
-                    .center(LatLng(point.latitude, point.longitude))
-                    .radius(point.arriveDistance)
-                    .fillColor(android.graphics.Color.argb(128, 50, 50, 255))
-                    .strokeColor(android.graphics.Color.argb(255, 10, 10, 255))
-                    .strokeWidth(2f)
-            )
-            if (marker != null && circle != null) {
-                poiMarkers.add(marker)
-                circleMarkers.add(circle)
+            val latLng = LatLng(point.latitude, point.longitude)
+            val previous = previousPoiSnapshotById[point.id]
+            val marker = poiMarkersById[point.id]
+            val circle = circleMarkersById[point.id]
+
+            if (marker == null || circle == null) {
+                val newMarker = aMap.addMarker(
+                    MarkerOptions()
+                        .position(latLng)
+                        .title("点 ${point.label}")
+                        .snippet("接近距离：${point.arriveDistance}米")
+                )
+                val newCircle = aMap.addCircle(
+                    CircleOptions()
+                        .center(latLng)
+                        .radius(point.arriveDistance)
+                        .fillColor(android.graphics.Color.argb(128, 50, 50, 255))
+                        .strokeColor(android.graphics.Color.argb(255, 10, 10, 255))
+                        .strokeWidth(2f)
+                )
+                if (newMarker != null && newCircle != null) {
+                    poiMarkersById[point.id] = newMarker
+                    circleMarkersById[point.id] = newCircle
+                }
+            } else if (previous != null) {
+                if (previous.latitude != point.latitude || previous.longitude != point.longitude) {
+                    marker.position = latLng
+                    circle.center = latLng
+                }
+                if (previous.label != point.label) {
+                    marker.title = "点 ${point.label}"
+                }
+                if (previous.arriveDistance != point.arriveDistance) {
+                    marker.snippet = "接近距离：${point.arriveDistance}米"
+                    circle.radius = point.arriveDistance
+                }
             }
+
+            previousPoiSnapshotById[point.id] = point
         }
     }
 
@@ -203,8 +315,6 @@ fun MapCard(
         )
 
         // 上拉抽屉
-        var showSheet by remember { mutableStateOf(false) }
-
         val sheetState = rememberModalBottomSheetState(
             skipPartiallyExpanded = false // 是否跳过半展开
         )
@@ -273,10 +383,7 @@ fun MapCard(
                                             )
                                     ) {
                                         Row(modifier = Modifier.fillMaxSize().padding(start = 16.dp)) {
-                                            val poiLatLng = LatLng(item.latitude, item.longitude)
-                                            val distance = position?.let { currentLatLng ->
-                                                AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
-                                            }
+                                            val distance = distanceByPoiIdForUi[item.id]
 
                                             HeightLightIcon(
                                                 modifier = Modifier.align(Alignment.CenterVertically),
@@ -435,7 +542,7 @@ fun MapCard(
                 TextButton(
                     onClick = {
                         showRenameDialog = false
-                        if (renameName.trim().isNotEmpty() && selectPoint != null) {
+                        if (renameName.trim().isNotEmpty()) {
                             viewModel.updatePoiLabel(projectUid,editPoiId, renameName)
                         }
                         renameName = ""
@@ -463,8 +570,11 @@ fun MapCard(
             currentMapView.map.setMapLanguage(AMap.CHINESE)
         },
         onDestroy = { currentMapView ->
-            poiMarkers.forEach { it.remove() }
-            poiMarkers.clear()
+            poiMarkersById.values.forEach { it.remove() }
+            poiMarkersById.clear()
+            circleMarkersById.values.forEach { it.remove() }
+            circleMarkersById.clear()
+            previousPoiSnapshotById.clear()
             currentMapView.map.isMyLocationEnabled = false
         }
     )
@@ -534,40 +644,24 @@ fun HeightLightIcon(
     blinkColor1: Color,
     blinkColor2: Color,
     isBlinking: Boolean,
-    blinkInterval: Long = 500L, // 每次闪烁间隔
     innerLightenFactor: Float = 0.25f,
 ) {
-    val latestIsBlinking by rememberUpdatedState(isBlinking)
-    val latestNormalColor by rememberUpdatedState(normalColor)
-    val latestBlinkColor1 by rememberUpdatedState(blinkColor1)
-    val latestBlinkColor2 by rememberUpdatedState(blinkColor2)
-
-    var currentColor by remember { mutableStateOf(normalColor) }
-    var blinkPhaseFirst by remember { mutableStateOf(true) }
-    var stopBlinkAtMs by remember { mutableLongStateOf(0L) }
-
-    LaunchedEffect(Unit) {
-        val step = blinkInterval.coerceAtLeast(80L)
-        val stopDebounce = blinkInterval.coerceAtLeast(200L)
-        while (true) {
-            if (latestIsBlinking) {
-                stopBlinkAtMs = 0L
-                currentColor = if (blinkPhaseFirst) latestBlinkColor1 else latestBlinkColor2
-                blinkPhaseFirst = !blinkPhaseFirst
-                delay(step)
-            } else {
-                val now = SystemClock.elapsedRealtime()
-                if (stopBlinkAtMs == 0L) {
-                    stopBlinkAtMs = now + stopDebounce
-                }
-                if (now >= stopBlinkAtMs) {
-                    currentColor = latestNormalColor
-                    blinkPhaseFirst = true
-                }
-                delay(50L)
-            }
-        }
-    }
+    val blinkTransition = rememberInfiniteTransition(label = "poi-blink-transition")
+    val blinkProgress by blinkTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 500),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "poi-blink-progress"
+    )
+    val targetColor = if (isBlinking) lerp(blinkColor1, blinkColor2, blinkProgress) else normalColor
+    val currentColor by animateColorAsState(
+        targetValue = targetColor,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "poi-highlight-color"
+    )
 
     val innerColor = currentColor.lighter(innerLightenFactor)
 
