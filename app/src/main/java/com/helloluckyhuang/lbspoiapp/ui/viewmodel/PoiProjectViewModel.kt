@@ -47,6 +47,8 @@ class PoiProjectViewModel(
     )
     private val _currentMapPoiList = MutableStateFlow<List<PoiPoint>>(emptyList())
     val currentMapPoiList: StateFlow<List<PoiPoint>> = _currentMapPoiList
+    private val _projectName = MutableStateFlow("")
+    val projectName: StateFlow<String> = _projectName
 
     fun addProject(title: String) {
         viewModelScope.launch {
@@ -66,10 +68,11 @@ class PoiProjectViewModel(
         }
     }
 
-    fun loadMapPoiList(projectUid: Int) {
+    fun loadPoiProject(projectUid: Int) {
         viewModelScope.launch {
             val project = repo.getProjectById(projectUid)
             _currentMapPoiList.value = parsePoiList(project?.dataJson ?: "[]")
+            _projectName.value = project?.title ?: ""
         }
     }
 

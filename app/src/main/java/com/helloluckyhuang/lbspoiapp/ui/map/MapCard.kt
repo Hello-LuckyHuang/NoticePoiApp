@@ -226,7 +226,8 @@ fun MapCard(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<androidx.compose.ui.unit.IntOffset>(
-                                            stiffness = Spring.StiffnessMediumLow,
+                                            stiffness = Spring.StiffnessVeryLow,
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
                                             visibilityThreshold = IntOffset.VisibilityThreshold
                                         )
                                     )
@@ -331,7 +332,9 @@ fun MapCard(
             onDismissRequest = { showEditDialog = false },
         ) {
             Card {
-                Column {
+                Column (
+                    modifier = Modifier.padding(16.dp)
+                ) {
                     Text("编辑途径点")
                     TextButton(onClick = {
                         showEditDialog = false
