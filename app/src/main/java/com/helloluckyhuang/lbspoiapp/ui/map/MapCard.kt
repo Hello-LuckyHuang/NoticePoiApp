@@ -43,7 +43,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 //import com.amap.api.maps2d.AMap
 //import com.amap.api.maps2d.CameraUpdateFactory
 //import com.amap.api.maps2d.MapView
@@ -142,11 +141,11 @@ fun MapCard(
             onCreate(null)
             map.uiSettings.isZoomControlsEnabled = true
             map.uiSettings.isMyLocationButtonEnabled = true
-            map.setMyLocationStyle(MyLocationStyle().apply {
-                myLocationType(MyLocationStyle.LOCATION_TYPE_SHOW)
+            map.myLocationStyle = MyLocationStyle().apply {
+                myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE_NO_CENTER)
                 interval(2000)
-            })
-            map.isMyLocationEnabled = false
+            }
+            map.isMyLocationEnabled = true
             map.moveCamera(CameraUpdateFactory.zoomTo(17F))
             map.setOnMyLocationChangeListener { location ->
                 locationPoint = PoiPoint(location.latitude, location.longitude)
