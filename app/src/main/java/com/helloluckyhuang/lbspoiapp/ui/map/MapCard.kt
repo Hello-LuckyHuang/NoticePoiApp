@@ -369,9 +369,9 @@ fun MapCard(
                                             .border(
                                                 width = 1.dp,
                                                 color = Color.LightGray,
-                                                shape = RoundedCornerShape(9.dp)
+                                                shape = RoundedCornerShape(18.dp)
                                             )
-                                            .clip(RoundedCornerShape(9.dp))
+                                            .clip(RoundedCornerShape(18.dp))
                                             .animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<androidx.compose.ui.unit.IntOffset>(
                                                 stiffness = Spring.StiffnessVeryLow,
                                                 dampingRatio = Spring.DampingRatioNoBouncy,
@@ -385,11 +385,14 @@ fun MapCard(
                                                     showEditDialog = true
                                                     editPoiId = item.id
                                                 }
-                                            )
+                                            ),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color.White
+                                        )
                                     ) {
                                         Row(modifier = Modifier.fillMaxSize().padding(start = 16.dp)) {
                                             val distance = item.distance
-
+                                            val color = if (distance != null && distance < item.arriveDistance) Color(0, 128, 0) else Color(100, 100, 100)
                                             HeightLightIcon(
                                                 modifier = Modifier.align(Alignment.CenterVertically),
                                                 normalColor = Color.Gray,
@@ -400,7 +403,6 @@ fun MapCard(
                                             Column(
                                                 modifier = Modifier.padding(16.dp)
                                             ) {
-                                                val color = if (distance != null && distance < item.arriveDistance) Color(0, 128, 0) else Color.Black
                                                 Text(
                                                     text = item.label,
                                                     style = MaterialTheme.typography.titleMedium,
@@ -414,9 +416,27 @@ fun MapCard(
                                                     color = color
                                                 )
                                                 Text(
-                                                    text = if (distance == null) "距离: 定位中" else "距离: ${if (distance < 1000) "%.2f m".format(distance) else "%.2f km".format(distance/1000)}",
+                                                    text = "距离: ",
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     color = color
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.weight(1f))
+                                            Row (
+                                                modifier = Modifier.padding(end = 20.dp).align(Alignment.CenterVertically),
+                                                verticalAlignment = Alignment.Bottom
+                                            ) {
+                                                Text(
+                                                    text = if (distance == null) "定位中" else if (distance < 1000) "%.2f".format(distance) else "%.2f".format(distance/1000),
+                                                    color = color,
+                                                    fontWeight = FontWeight.Light,
+                                                    fontSize = 7.em
+                                                )
+                                                Text(
+                                                    text = if (distance == null) "" else if (distance < 1000) " m" else " km",
+                                                    color = color,
+                                                    fontWeight = FontWeight.Light,
+                                                    fontSize = 3.em
                                                 )
                                             }
                                         }
