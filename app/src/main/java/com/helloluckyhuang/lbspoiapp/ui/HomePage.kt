@@ -1,5 +1,8 @@
 package com.helloluckyhuang.lbspoiapp.ui
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -118,6 +122,11 @@ fun HomePage(
                                 shape = RoundedCornerShape(9.dp)
                             )
                             .clip(RoundedCornerShape(9.dp))
+                            .animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<androidx.compose.ui.unit.IntOffset>(
+                                stiffness = Spring.StiffnessVeryLow,
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                visibilityThreshold = IntOffset.VisibilityThreshold
+                            ))
                             .combinedClickable(
                                 onClick = {
                                     // 点击卡片时执行的操作

@@ -116,6 +116,7 @@ class PoiProjectViewModel(
                     it.label
                 )
             }
+            rebuildUI()
         }
     }
 

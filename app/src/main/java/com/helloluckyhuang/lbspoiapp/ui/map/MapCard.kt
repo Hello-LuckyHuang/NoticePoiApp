@@ -5,12 +5,16 @@ import android.content.ComponentCallbacks
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Bundle
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -59,6 +63,7 @@ import com.amap.api.maps.model.Marker
 import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.MyLocationStyle
 import com.helloluckyhuang.lbspoiapp.R
+import com.helloluckyhuang.lbspoiapp.ui.component.SlidingDigitText
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPoint
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPointUiModel
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
@@ -80,7 +85,7 @@ fun MapCard(
     var showSheet by remember { mutableStateOf(false) }
 
     // 点列表
-    val poiList by viewModel.uiPoiListState.collectAsStateWithLifecycle()
+    val poiList by viewModel.uiPoiListState.collectAsState()
 
     // 位置坐标
     var locationPoint = viewModel.locationPoint
@@ -138,7 +143,7 @@ fun MapCard(
             map.uiSettings.isZoomControlsEnabled = true
             map.uiSettings.isMyLocationButtonEnabled = true
             map.setMyLocationStyle(MyLocationStyle().apply {
-                myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW_NO_CENTER)
+                myLocationType(MyLocationStyle.LOCATION_TYPE_SHOW)
                 interval(2000)
             })
             map.isMyLocationEnabled = false
@@ -244,6 +249,65 @@ fun MapCard(
         )
 
         Box(modifier = Modifier.fillMaxSize()) {
+            AnimatedVisibility(
+                visible = poiList.isNotEmpty() && !showSheet,
+                enter = fadeIn() + slideInVertically(),  // 进入动画
+                exit = fadeOut() + slideOutVertically()  // 退出动画
+            ) {
+                if (poiList.isNotEmpty()) {
+                    Card (
+                        modifier = Modifier
+                            .padding(horizontal = 30.dp, vertical = 12.dp)
+                            .border(
+                                width = 1.dp,
+                                color = Color.LightGray,
+                                shape = RoundedCornerShape(25.dp)
+                            )
+                            .clip(RoundedCornerShape(25.dp))
+                            .align(Alignment.TopCenter),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        )
+                    ) {
+                        val item = poiList.first()
+                        Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
+                            val distance = item.distance
+                            HeightLightIcon(
+                                modifier = Modifier.align(Alignment.CenterVertically),
+                                normalColor = Color.Gray,
+                                blinkColor1 = Color.Green,
+                                blinkColor2 = Color.Blue,
+                                isBlinking = distance != null && distance < item.arriveDistance
+                            )
+                            Column(
+                                modifier = Modifier.padding(10.dp)
+                            ) {
+                                val color = if (distance != null && distance < item.arriveDistance) Color(0, 128, 0) else Color.Gray
+                                Text(
+                                    text = item.label,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = color,
+                                    textDecoration = if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row (horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        text = if (item.isArrived) "已到达" else "未到达",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = color
+                                    )
+                                    SlidingDigitText(
+                                        text = if (distance == null) "定位中" else "距离: ${if (distance < 1000) "%.2f m".format(distance) else "%.2f km".format(distance/1000)}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = color
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Button(
                 onClick = { showSheet = true },
                 modifier = Modifier
