@@ -73,7 +73,7 @@ fun HomePage(
                 .fillMaxWidth()
                 .padding(start = 1.dp, top = 24.dp, bottom = 12.dp),
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Light
         )
         // 添加项目按钮 和 设置按钮
         Row {
