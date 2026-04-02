@@ -5,17 +5,12 @@ import android.content.ComponentCallbacks
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Bundle
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -87,7 +82,7 @@ fun MapCard(
     // 点列表
     val poiList by viewModel.uiPoiListState.collectAsStateWithLifecycle()
 
-
+    // 位置坐标
     var locationPoint = viewModel.locationPoint
 
     // 新建弹窗
@@ -105,6 +100,23 @@ fun MapCard(
     var renameName by remember { mutableStateOf("") }
 
     val context = LocalContext.current
+    var hasNotificationPermission by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasNotificationPermission = granted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+        viewModel.consumeNotificationPermissionRequest()
+    }
+
+    // 权限申请(位置权限、通知权限)
     var hasLocationPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -133,6 +145,16 @@ fun MapCard(
                 )
             )
         }
+    }
+    LaunchedEffect(viewModel.shouldRequestNotificationPermission, hasNotificationPermission) {
+        if (!viewModel.shouldRequestNotificationPermission) return@LaunchedEffect
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasNotificationPermission) {
+            viewModel.consumeNotificationPermissionRequest()
+            return@LaunchedEffect
+        }
+
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     val mapView = remember {
@@ -447,6 +469,14 @@ fun MapCard(
                     }) {
                         Text("取消")
                     }
+                    if (viewModel.getPoiById(editPoiId) != null && viewModel.getPoiById(editPoiId)?.isArrived?:false) {
+                        TextButton(onClick = {
+                            viewModel.erasePoiArrived(projectUid, editPoiId)
+                            showEditDialog = false
+                        }) {
+                            Text("重置到达")
+                        }
+                    }
                 }
             }
         }
@@ -573,22 +603,25 @@ fun HeightLightIcon(
     isBlinking: Boolean,
     innerLightenFactor: Float = 0.25f,
 ) {
-    val blinkTransition = rememberInfiniteTransition(label = "poi-blink-transition")
-    val blinkProgress by blinkTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 500),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "poi-blink-progress"
-    )
-    val targetColor = if (isBlinking) lerp(blinkColor1, blinkColor2, blinkProgress) else normalColor
-    val currentColor by animateColorAsState(
-        targetValue = targetColor,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "poi-highlight-color"
-    )
+    var useBlinkColor1 by remember { mutableStateOf(true) }
+
+    LaunchedEffect(isBlinking) {
+        if (!isBlinking) {
+            useBlinkColor1 = true
+            return@LaunchedEffect
+        }
+
+        while (true) {
+            useBlinkColor1 = !useBlinkColor1
+            delay(320)
+        }
+    }
+
+    val currentColor = when {
+        !isBlinking -> normalColor
+        useBlinkColor1 -> blinkColor1
+        else -> blinkColor2
+    }
 
     val innerColor = currentColor.lighter(innerLightenFactor)
 

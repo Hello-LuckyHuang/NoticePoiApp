@@ -62,9 +62,11 @@ data class PoiPointUiModel(
 class PoiProjectViewModel(
     private val repo: PoiProjectRepository
 ) : ViewModel() {
-    private val notificationChannelId = "poi_notice_channel"
-    private val notificationChannelName = "POI Notice"
+    private val notificationChannelId = "poi_notice_channel_important"
+    private val notificationChannelName = "POI Important Notice"
     private var nextNotificationId = 1
+    var shouldRequestNotificationPermission by mutableStateOf(false)
+        private set
 
     val projects = repo.projects.stateIn(
         scope = viewModelScope,
@@ -123,6 +125,10 @@ class PoiProjectViewModel(
         val nextId = (mapPoiList.maxOfOrNull { it.id } ?: 0) + 1
         mapPoiList += PoiPointData(id = nextId, pos = PoiPoint(latitude, longitude), arriveDistance = arriveDistance, label = label)
         rebuildUI()
+    }
+
+    fun getPoiById(poiId: Int): PoiPointData? {
+        return mapPoiList.find { it.id == poiId }
     }
 
     fun deletePoiToCurrentMap(poiId: Int) {
@@ -195,6 +201,22 @@ class PoiProjectViewModel(
         }
     }
 
+    fun erasePoiArrived(projectUid: Int, poiId: Int) {
+        var changed = false
+        mapPoiList.replaceAll { poi ->
+            if (poi.id == poiId && poi.isArrived) {
+                changed = true
+                poi.copy(isArrived = false)
+            } else {
+                poi
+            }
+        }
+        if (changed) {
+            persistCurrentMapPoiList(projectUid)
+        }
+        rebuildUI()
+    }
+
     // 刷新本地位置
     fun updateLocalPoint(newLocation: PoiPoint) {
         locationPoint = newLocation
@@ -243,14 +265,19 @@ class PoiProjectViewModel(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) return
+            if (!granted) {
+                shouldRequestNotificationPermission = true
+                return
+            }
         }
 
         val notification = NotificationCompat.Builder(context, notificationChannelId)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("接近预定点提醒")
             .setContentText(text)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setAutoCancel(true)
             .build()
 
@@ -265,11 +292,16 @@ class PoiProjectViewModel(
         val channel = NotificationChannel(
             notificationChannelId,
             notificationChannelName,
-            NotificationManager.IMPORTANCE_DEFAULT
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "Arrival reminder and system notice"
+            enableVibration(true)
         }
         manager.createNotificationChannel(channel)
+    }
+
+    fun consumeNotificationPermissionRequest() {
+        shouldRequestNotificationPermission = false
     }
 
     // 刷新UI
