@@ -20,8 +20,10 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amap.api.maps2d.AMapUtils
-import com.amap.api.maps2d.model.LatLng
+//import com.amap.api.maps2d.AMapUtils
+//import com.amap.api.maps2d.model.LatLng
+import com.amap.api.maps.AMapUtils
+import com.amap.api.maps.model.LatLng
 import com.helloluckyhuang.lbspoiapp.PoiApp
 import com.helloluckyhuang.lbspoiapp.R
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData

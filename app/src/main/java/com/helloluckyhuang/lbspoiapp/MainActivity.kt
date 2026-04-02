@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.amap.api.maps.MapsInitializer
 import com.helloluckyhuang.lbspoiapp.ui.HomePage
 import com.helloluckyhuang.lbspoiapp.ui.theme.LBSPOIAppTheme
 import com.helloluckyhuang.lbspoiapp.ui.MapPage
@@ -42,6 +44,9 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun Pages(modifier: Modifier = Modifier) {
+        val context = LocalContext.current
+        MapsInitializer.updatePrivacyShow(context, true, true)
+        MapsInitializer.updatePrivacyAgree(context, true)
         Box (modifier = modifier) {
             val navController = rememberNavController()
             NavHost(
