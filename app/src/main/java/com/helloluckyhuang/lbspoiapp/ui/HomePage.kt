@@ -32,7 +32,7 @@ import kotlin.random.Random
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> Unit, onNavigateToTestPage: () -> Unit) {
+fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> Unit) {
     val cardList by viewModel.projects.collectAsState()
 
     // 新建按钮弹窗
@@ -66,13 +66,6 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
-        Button(
-            onClick = {
-                onNavigateToTestPage()
-            }
-        ) {
-            Text("测试页面")
-        }
         // 添加项目按钮
         Button(
             onClick = {

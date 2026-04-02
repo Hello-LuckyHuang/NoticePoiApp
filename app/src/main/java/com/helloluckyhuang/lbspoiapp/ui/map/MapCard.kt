@@ -149,6 +149,7 @@ fun MapCard(
         }
     }
 
+    // 定期更新位置
     LaunchedEffect(Unit) {
         while (true) {
             val lat = locationPoint.latitude
@@ -171,7 +172,7 @@ fun MapCard(
                     }
                 }
             }
-            delay(2000)
+            delay(3000)
         }
     }
 
