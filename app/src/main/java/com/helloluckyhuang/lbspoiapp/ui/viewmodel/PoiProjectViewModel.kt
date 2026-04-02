@@ -26,8 +26,10 @@ import com.helloluckyhuang.lbspoiapp.PoiApp
 import com.helloluckyhuang.lbspoiapp.R
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
 import com.helloluckyhuang.lbspoiapp.data.repository.PoiProjectRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.collections.emptyList
@@ -138,6 +140,36 @@ class PoiProjectViewModel(
         rebuildUI()
     }
 
+    fun searchAndMarkArrivedPoi(projectUid: Int) {
+        viewModelScope.launch(Dispatchers.Default) {
+            var changed = false
+            var changedPoi: PoiPointData? = null
+            val currentLatLng = LatLng(locationPoint.latitude, locationPoint.longitude)
+            mapPoiList.replaceAll { poi ->
+                val lat = poi.pos.latitude
+                val lng = poi.pos.longitude
+                val poiLatLng = LatLng(lat, lng)
+                val distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
+                if (distance < poi.arriveDistance && !poi.isArrived) {
+                    changed = true
+                    changedPoi = poi
+                    poi.copy(isArrived = true)
+                } else {
+                    poi
+                }
+            }
+            if (changed) {
+                persistCurrentMapPoiList(projectUid)
+                // 提醒用户正在接近预定点
+                playNoticeSound()
+                vibratePhone(500)
+                if (changedPoi != null) {
+                    showNotification("现在正在接近 ${changedPoi.label}")
+                }
+            }
+        }
+    }
+
     fun markPoiArrived(projectUid: Int, poiId: Int) {
         var changed = false
         var changedPoi: PoiPointData? = null
@@ -240,26 +272,30 @@ class PoiProjectViewModel(
 
     // 刷新UI
     private fun rebuildUI() {
-        val sortedCards = mapPoiList
-            .asSequence()
-            .map { fixed ->
-                val poiLatLng = LatLng(fixed.pos.latitude, fixed.pos.longitude)
-                val currentLatLng = LatLng(locationPoint.latitude, locationPoint.longitude)
-                PoiPointUiModel(
-                    id = fixed.id,
-                    latitude = fixed.pos.latitude,
-                    longitude = fixed.pos.longitude,
-                    distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng),
-                    isArrived = fixed.isArrived,
-                    arriveDistance = fixed.arriveDistance,
-                    label = fixed.label
-                )
-            }
-            .sortedBy { it.distance }
-            .toList()
+        viewModelScope.launch(Dispatchers.Default) {
+            val sortedCards = mapPoiList
+                .asSequence()
+                .map { fixed ->
+                    val poiLatLng = LatLng(fixed.pos.latitude, fixed.pos.longitude)
+                    val currentLatLng = LatLng(locationPoint.latitude, locationPoint.longitude)
+                    PoiPointUiModel(
+                        id = fixed.id,
+                        latitude = fixed.pos.latitude,
+                        longitude = fixed.pos.longitude,
+                        distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng),
+                        isArrived = fixed.isArrived,
+                        arriveDistance = fixed.arriveDistance,
+                        label = fixed.label
+                    )
+                }
+                .sortedBy { it.distance }
+                .toList()
 
-        _uiPoiListState.update {
-            sortedCards
+            withContext(Dispatchers.Main) {
+                _uiPoiListState.update {
+                    sortedCards
+                }
+            }
         }
     }
 

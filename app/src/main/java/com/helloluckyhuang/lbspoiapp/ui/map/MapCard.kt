@@ -158,19 +158,8 @@ fun MapCard(
                     lng in -180.0..180.0 &&
                     !(lat == 0.0 && lng == 0.0)
             if (isValidCoordinate) {
-                val currentLatLng = LatLng(locationPoint.latitude, locationPoint.longitude)
                 viewModel.updateLocalPoint(locationPoint)
-
-                for (poi in viewModel.mapPoiList) {
-                    if (poi.isArrived) {
-                        continue
-                    }
-                    val poiLatLng = LatLng(poi.pos.latitude, poi.pos.longitude)
-                    val distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
-                    if (distance < poi.arriveDistance) {
-                        viewModel.markPoiArrived(projectUid, poi.id)
-                    }
-                }
+                viewModel.searchAndMarkArrivedPoi(projectUid)
             }
             delay(3000)
         }
