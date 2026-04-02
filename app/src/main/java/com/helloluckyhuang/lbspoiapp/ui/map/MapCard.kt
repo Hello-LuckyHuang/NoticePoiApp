@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -271,6 +272,7 @@ fun MapCard(
                         val item = poiList.first()
                         Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
                             val distance = item.distance
+                            val color = if (distance != null && distance < item.arriveDistance) Color(0, 128, 0) else Color.Gray
                             HeightLightIcon(
                                 modifier = Modifier.align(Alignment.CenterVertically),
                                 normalColor = Color.Gray,
@@ -281,12 +283,10 @@ fun MapCard(
                             Column(
                                 modifier = Modifier.padding(10.dp)
                             ) {
-                                val color = if (distance != null && distance < item.arriveDistance) Color(0, 128, 0) else Color.Gray
-                                Text(
+                                SlidingDigitText(
                                     text = item.label,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = color,
-                                    textDecoration = if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
+                                    color = color
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Row (horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -295,12 +295,30 @@ fun MapCard(
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = color
                                     )
-                                    SlidingDigitText(
-                                        text = if (distance == null) "定位中" else "距离: ${if (distance < 1000) "%.2f m".format(distance) else "%.2f km".format(distance/1000)}",
+                                    Text(
+                                        text = "距离: ",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = color
                                     )
                                 }
+                            }
+                            Spacer(modifier = Modifier.weight(1f))
+                            Row (
+                                modifier = Modifier.padding(end = 20.dp).align(Alignment.CenterVertically),
+                                verticalAlignment = Alignment.Bottom
+                            ) {
+                                SlidingDigitText(
+                                    text = if (distance == null) "定位中" else if (distance < 1000) "%.2f".format(distance) else "%.2f".format(distance/1000),
+                                    color = color,
+                                    fontWeight = FontWeight.Light,
+                                    fontSize = 7.em
+                                )
+                                SlidingDigitText(
+                                    text = if (distance == null) "" else if (distance < 1000) " m" else " km",
+                                    color = color,
+                                    fontWeight = FontWeight.Light,
+                                    fontSize = 3.em
+                                )
                             }
                         }
                     }

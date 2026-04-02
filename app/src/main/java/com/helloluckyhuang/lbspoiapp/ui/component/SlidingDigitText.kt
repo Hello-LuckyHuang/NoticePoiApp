@@ -12,6 +12,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnit.Companion
 
 private enum class CharScrollDirection {
     Up,
@@ -33,6 +37,9 @@ fun SlidingDigitText(
     style: TextStyle = TextStyle.Default.copy(
         fontFeatureSettings = "\"tnum\"" // tabular numbers，等宽数字
     ),
+    fontWeight: FontWeight? = null,
+    fontFamily: FontFamily? = null,
+    fontSize: TextUnit = TextUnit.Unspecified,
     color: Color = Color.Black
 ) {
     Row(
@@ -54,7 +61,10 @@ fun SlidingDigitText(
                     Text(
                         text = animatedChar.toString(),
                         style = style,
-                        color = color
+                        color = color,
+                        fontWeight = fontWeight,
+                        fontFamily = fontFamily,
+                        fontSize = fontSize
                     )
                 }
             }
