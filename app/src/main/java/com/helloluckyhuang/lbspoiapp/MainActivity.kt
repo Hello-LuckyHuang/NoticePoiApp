@@ -16,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.helloluckyhuang.lbspoiapp.test.PlaneDistanceScreen
 import com.helloluckyhuang.lbspoiapp.ui.HomePage
 import com.helloluckyhuang.lbspoiapp.ui.theme.LBSPOIAppTheme
 import com.helloluckyhuang.lbspoiapp.ui.MapPage
@@ -41,6 +42,11 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
+    fun TestPages() {
+        PlaneDistanceScreen()
+    }
+
+    @Composable
     fun Pages(modifier: Modifier = Modifier) {
         Box (modifier = modifier) {
             val navController = rememberNavController()
@@ -53,6 +59,9 @@ class MainActivity : ComponentActivity() {
                         viewModel = viewModel,
                         onNavigateToMapPage = { uid ->
                             navController.navigate("map_page/$uid")
+                        },
+                        onNavigateToTestPage = {
+                            navController.navigate("test_page")
                         }
                     )
                 }
@@ -73,6 +82,9 @@ class MainActivity : ComponentActivity() {
                             navController.navigate("main_page")
                         }
                     )
+                }
+                composable("test_page") {
+                    TestPages()
                 }
             }
         }

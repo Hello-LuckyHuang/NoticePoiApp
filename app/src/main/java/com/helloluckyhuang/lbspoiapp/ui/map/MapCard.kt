@@ -5,7 +5,6 @@ import android.content.ComponentCallbacks
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Bundle
-import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
@@ -45,6 +44,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.amap.api.maps2d.AMap
 import com.amap.api.maps2d.AMapUtils
 import com.amap.api.maps2d.CameraUpdateFactory
@@ -57,41 +57,30 @@ import com.amap.api.maps2d.model.MarkerOptions
 import com.amap.api.maps2d.model.MyLocationStyle
 import com.helloluckyhuang.lbspoiapp.R
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPoint
+import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPointUiModel
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 import kotlinx.coroutines.delay
-import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.atomic.AtomicReference
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MapCard(
     projectUid: Int,
-    poiList: List<PoiPoint>,
     viewModel: PoiProjectViewModel
 ) {
-    val latestPoiListState = rememberUpdatedState(poiList)
+    // 地图标记
     val poiMarkersById = remember { mutableMapOf<Int, Marker>() }
     val circleMarkersById = remember { mutableMapOf<Int, Circle>() }
-    val previousPoiSnapshotById = remember { mutableMapOf<Int, PoiPoint>() }
+    val previousPoiSnapshotById = remember { mutableMapOf<Int, PoiPointUiModel>() }
     val reportedPoiIds = remember { mutableSetOf<Int>() }
 
-    val latestLocationRef = remember { AtomicReference<LatLng?>(null) }
-    val lastArrivalCheckAtMsRef = remember { AtomicLong(0L) }
-    var distanceByPoiIdForUi by remember { mutableStateOf<Map<Int, Float>>(emptyMap()) }
-    var sortedPoiIdsForUi by remember { mutableStateOf<List<Int>>(poiList.map { it.id }) }
+    // 显示抽屉
     var showSheet by remember { mutableStateOf(false) }
 
-    val sortedPoiList = remember(poiList, sortedPoiIdsForUi) {
-        if (poiList.isEmpty()) return@remember emptyList()
-        val poiById = poiList.associateBy { it.id }
-        val ordered = sortedPoiIdsForUi.mapNotNull { poiById[it] }
-        if (ordered.size == poiList.size) {
-            ordered
-        } else {
-            val orderedIdSet = ordered.map { it.id }.toSet()
-            ordered + poiList.filterNot { orderedIdSet.contains(it.id) }
-        }
-    }
+    // 点列表
+    val poiList by viewModel.uiPoiListState.collectAsStateWithLifecycle()
+
+
+    var locationPoint = viewModel.locationPoint
 
     // 新建弹窗
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -150,35 +139,7 @@ fun MapCard(
             map.isMyLocationEnabled = false
             map.moveCamera(CameraUpdateFactory.zoomTo(17F))
             map.setOnMyLocationChangeListener { location ->
-                val lat = location.latitude
-                val lng = location.longitude
-                val isValidCoordinate = lat in -90.0..90.0 &&
-                    lng in -180.0..180.0 &&
-                    !(lat == 0.0 && lng == 0.0)
-                if (!isValidCoordinate) {
-                    return@setOnMyLocationChangeListener
-                }
-
-                val currentLatLng = LatLng(lat, lng)
-                latestLocationRef.set(currentLatLng)
-
-                val now = SystemClock.elapsedRealtime()
-                val lastCheckAt = lastArrivalCheckAtMsRef.get()
-                if (now - lastCheckAt < 900L) return@setOnMyLocationChangeListener
-                lastArrivalCheckAtMsRef.set(now)
-
-                // 标记靠近的点（同一个点只上报一次，避免高频重复触发）
-                latestPoiListState.value.forEach { poi ->
-                    if (poi.isArrived || reportedPoiIds.contains(poi.id)) {
-                        return@forEach
-                    }
-                    val poiLatLng = LatLng(poi.latitude, poi.longitude)
-                    val distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
-                    if (distance < poi.arriveDistance) {
-                        reportedPoiIds.add(poi.id)
-                        viewModel.markPoiArrived(projectUid, poi.id)
-                    }
-                }
+                locationPoint = PoiPoint(location.latitude, location.longitude)
             }
             map.setOnMapLongClickListener { point ->
                 showCreateDialog = true
@@ -190,56 +151,27 @@ fun MapCard(
 
     LaunchedEffect(Unit) {
         while (true) {
-            val now = SystemClock.elapsedRealtime()
-            val phaseIn10s = now % 10_000L
-            val delayToThirdSecond = if (phaseIn10s <= 3_000L) {
-                3_000L - phaseIn10s
-            } else {
-                13_000L - phaseIn10s
-            }
-            delay(delayToThirdSecond)
+            val lat = locationPoint.latitude
+            val lng = locationPoint.longitude
+            val isValidCoordinate = lat in -90.0..90.0 &&
+                    lng in -180.0..180.0 &&
+                    !(lat == 0.0 && lng == 0.0)
+            if (isValidCoordinate) {
+                val currentLatLng = LatLng(locationPoint.latitude, locationPoint.longitude)
+                viewModel.updateLocalPoint(locationPoint)
 
-            val currentLocationForDistance = latestLocationRef.get()
-            val currentPoiListForDistance = latestPoiListState.value
-            distanceByPoiIdForUi = if (currentLocationForDistance == null) {
-                emptyMap()
-            } else {
-                buildMap(currentPoiListForDistance.size) {
-                    currentPoiListForDistance.forEach { poi ->
-                        put(
-                            poi.id,
-                            AMapUtils.calculateLineDistance(
-                                currentLocationForDistance,
-                                LatLng(poi.latitude, poi.longitude)
-                            )
-                        )
+                for (poi in viewModel.mapPoiList) {
+                    if (poi.isArrived) {
+                        continue
+                    }
+                    val poiLatLng = LatLng(poi.pos.latitude, poi.pos.longitude)
+                    val distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng)
+                    if (distance < poi.arriveDistance) {
+                        viewModel.markPoiArrived(projectUid, poi.id)
                     }
                 }
             }
-
-            val nowAfterDistance = SystemClock.elapsedRealtime()
-            val phaseAfterDistance = nowAfterDistance % 10_000L
-            val delayToSeventhSecond = if (phaseAfterDistance <= 7_000L) {
-                7_000L - phaseAfterDistance
-            } else {
-                17_000L - phaseAfterDistance
-            }
-            delay(delayToSeventhSecond)
-
-            val currentLocationForSort = latestLocationRef.get()
-            val currentPoiListForSort = latestPoiListState.value
-            sortedPoiIdsForUi = if (currentLocationForSort == null) {
-                currentPoiListForSort.map { it.id }
-            } else {
-                currentPoiListForSort
-                    .sortedBy { poi ->
-                        AMapUtils.calculateLineDistance(
-                            currentLocationForSort,
-                            LatLng(poi.latitude, poi.longitude)
-                        )
-                    }
-                    .map { it.id }
-            }
+            delay(2000)
         }
     }
 
@@ -247,13 +179,10 @@ fun MapCard(
         mapView.map.isMyLocationEnabled = hasLocationPermission
     }
 
+    // 管理地图标记
     LaunchedEffect(poiList) {
         val validPoiIds = poiList.map { it.id }.toSet()
         reportedPoiIds.retainAll(validPoiIds)
-        val currentSortedIds = sortedPoiIdsForUi
-        sortedPoiIdsForUi = currentSortedIds.filter { validPoiIds.contains(it) } +
-            poiList.map { it.id }.filterNot { currentSortedIds.contains(it) }
-        distanceByPoiIdForUi = distanceByPoiIdForUi.filterKeys { validPoiIds.contains(it) }
 
         val aMap = mapView.map
         val removedPoiIds = previousPoiSnapshotById.keys - validPoiIds
@@ -338,7 +267,7 @@ fun MapCard(
                     sheetState = sheetState
                 ) {
 
-                    if (sortedPoiList.isNotEmpty()) {
+                    if (poiList.isNotEmpty()) {
                         Column {
                             Text(
                                 modifier = Modifier
@@ -352,7 +281,7 @@ fun MapCard(
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 items(
-                                    items = sortedPoiList,
+                                    items = poiList,
                                     key = { it.id }
                                 ) { item ->
                                     Modifier
@@ -364,9 +293,9 @@ fun MapCard(
                                             .border(
                                                 width = 1.dp,
                                                 color = Color.LightGray,
-                                                shape = RoundedCornerShape(8.dp)
+                                                shape = RoundedCornerShape(9.dp)
                                             )
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .clip(RoundedCornerShape(9.dp))
                                             .animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = spring<androidx.compose.ui.unit.IntOffset>(
                                                 stiffness = Spring.StiffnessVeryLow,
                                                 dampingRatio = Spring.DampingRatioNoBouncy,
@@ -383,7 +312,7 @@ fun MapCard(
                                             )
                                     ) {
                                         Row(modifier = Modifier.fillMaxSize().padding(start = 16.dp)) {
-                                            val distance = distanceByPoiIdForUi[item.id]
+                                            val distance = item.distance
 
                                             HeightLightIcon(
                                                 modifier = Modifier.align(Alignment.CenterVertically),

@@ -22,7 +22,6 @@ fun MapPage(
     projectUid: Int,
     onNavigateToHomePage: () -> Unit
 ) {
-    val poiList by viewModel.currentMapPoiList.collectAsState()
     val projectName by viewModel.projectName.collectAsState()
 
     LaunchedEffect(projectUid) {
@@ -56,7 +55,6 @@ fun MapPage(
         )
         MapCard(
             projectUid = projectUid,
-            poiList = poiList,
             viewModel = viewModel
         )
     }

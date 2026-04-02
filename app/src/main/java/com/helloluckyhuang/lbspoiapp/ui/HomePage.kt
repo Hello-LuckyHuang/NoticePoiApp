@@ -32,7 +32,7 @@ import kotlin.random.Random
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> Unit) {
+fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> Unit, onNavigateToTestPage: () -> Unit) {
     val cardList by viewModel.projects.collectAsState()
 
     // 新建按钮弹窗
@@ -66,6 +66,13 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
+        Button(
+            onClick = {
+                onNavigateToTestPage()
+            }
+        ) {
+            Text("测试页面")
+        }
         // 添加项目按钮
         Button(
             onClick = {
@@ -93,9 +100,9 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
                             .border(
                                 width = 1.dp,
                                 color = Color.LightGray,
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(9.dp)
                             )
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(9.dp))
                             .combinedClickable(
                                 onClick = {
                                     // 点击卡片时执行的操作

@@ -10,11 +10,18 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.amap.api.maps2d.AMapUtils
+import com.amap.api.maps2d.model.LatLng
 import com.helloluckyhuang.lbspoiapp.PoiApp
 import com.helloluckyhuang.lbspoiapp.R
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
@@ -23,11 +30,26 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.collections.emptyList
 
 data class PoiPoint(
+    val latitude: Double,
+    val longitude: Double
+)
+
+data class PoiPointData(
+    val id: Int,
+    val pos: PoiPoint,
+    var isArrived: Boolean = false,
+    val arriveDistance: Double = 100.0,
+    val label: String = ""
+)
+
+data class PoiPointUiModel(
     val id: Int,
     val latitude: Double,
     val longitude: Double,
+    val distance: Float?,
     var isArrived: Boolean = false,
     val arriveDistance: Double = 100.0,
     val label: String = ""
@@ -45,8 +67,14 @@ class PoiProjectViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
-    private val _currentMapPoiList = MutableStateFlow<List<PoiPoint>>(emptyList())
-    val currentMapPoiList: StateFlow<List<PoiPoint>> = _currentMapPoiList
+
+    var mapPoiList = mutableStateListOf<PoiPointData>()
+    private val _uiPoiListState = MutableStateFlow<List<PoiPointUiModel>>(emptyList())
+    val uiPoiListState: StateFlow<List<PoiPointUiModel>> = _uiPoiListState.asStateFlow()
+
+    var locationPoint by mutableStateOf(PoiPoint(0.0, 0.0))
+        private set
+
     private val _projectName = MutableStateFlow("")
     val projectName: StateFlow<String> = _projectName
 
@@ -71,49 +99,55 @@ class PoiProjectViewModel(
     fun loadPoiProject(projectUid: Int) {
         viewModelScope.launch {
             val project = repo.getProjectById(projectUid)
-            _currentMapPoiList.value = parsePoiList(project?.dataJson ?: "[]")
+            mapPoiList = parsePoiList(project?.dataJson ?: "[]")
             _projectName.value = project?.title ?: ""
+            _uiPoiListState.value = mapPoiList.map {
+                PoiPointUiModel(
+                    it.id,
+                    it.pos.latitude,
+                    it.pos.longitude,
+                    null,
+                    it.isArrived,
+                    it.arriveDistance,
+                    it.label
+                )
+            }
         }
     }
 
     fun addPoiToCurrentMap(latitude: Double, longitude: Double, arriveDistance: Double, label: String) {
-        _currentMapPoiList.update { poiList ->
-            val nextId = (poiList.maxOfOrNull { it.id } ?: 0) + 1
-            poiList + PoiPoint(id = nextId, latitude = latitude, longitude = longitude, arriveDistance = arriveDistance, label = label)
-        }
+        val nextId = (mapPoiList.maxOfOrNull { it.id } ?: 0) + 1
+        mapPoiList += PoiPointData(id = nextId, pos = PoiPoint(latitude, longitude), arriveDistance = arriveDistance, label = label)
+        rebuildUI()
     }
 
     fun deletePoiToCurrentMap(poiId: Int) {
-        _currentMapPoiList.update { poiList ->
-            poiList.filterNot { it.id == poiId }
-        }
+        mapPoiList.removeAll { it.id == poiId }
+        rebuildUI()
     }
 
     fun updatePoiLabel(projectUid: Int, poiId: Int, label: String) {
-        _currentMapPoiList.update { poiList ->
-            poiList.map { poi ->
-                if (poi.id == poiId) {
-                    poi.copy(label = label)
-                } else {
-                    poi
-                }
+        mapPoiList.replaceAll { poi ->
+            if (poi.id == poiId) {
+                poi.copy(label = label)
+            } else {
+                poi
             }
         }
         persistCurrentMapPoiList(projectUid)
+        rebuildUI()
     }
 
     fun markPoiArrived(projectUid: Int, poiId: Int) {
         var changed = false
-        var changedPoi: PoiPoint? = null
-        _currentMapPoiList.update { poiList ->
-            poiList.map { poi ->
-                if (poi.id == poiId && !poi.isArrived) {
-                    changed = true
-                    changedPoi = poi
-                    poi.copy(isArrived = true)
-                } else {
-                    poi
-                }
+        var changedPoi: PoiPointData? = null
+        mapPoiList.replaceAll { poi ->
+            if (poi.id == poiId && !poi.isArrived) {
+                changed = true
+                changedPoi = poi
+                poi.copy(isArrived = true)
+            } else {
+                poi
             }
         }
         if (changed) {
@@ -127,8 +161,14 @@ class PoiProjectViewModel(
         }
     }
 
+    // 刷新本地位置
+    fun updateLocalPoint(newLocation: PoiPoint) {
+        locationPoint = newLocation
+        rebuildUI()
+    }
+
     // 播放提示音
-    fun playNoticeSound() {
+    private fun playNoticeSound() {
         val mediaPlayer = MediaPlayer.create(PoiApp.instance.applicationContext, R.raw.notice) ?: return
         mediaPlayer.setOnCompletionListener { player ->
             player.release()
@@ -145,7 +185,7 @@ class PoiProjectViewModel(
     }
 
     // 震动设备
-    fun vibratePhone(durationMs: Long = 200L) {
+    private fun vibratePhone(durationMs: Long = 200L) {
         val context = PoiApp.instance.applicationContext
         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             context.getSystemService(VibratorManager::class.java)?.defaultVibrator
@@ -160,7 +200,7 @@ class PoiProjectViewModel(
     }
 
     // 弹出通知
-    fun showNotification(text: String) {
+    private fun showNotification(text: String) {
         val context = PoiApp.instance.applicationContext
         ensureNotificationChannel(context)
 
@@ -198,10 +238,35 @@ class PoiProjectViewModel(
         manager.createNotificationChannel(channel)
     }
 
+    // 刷新UI
+    private fun rebuildUI() {
+        val sortedCards = mapPoiList
+            .asSequence()
+            .map { fixed ->
+                val poiLatLng = LatLng(fixed.pos.latitude, fixed.pos.longitude)
+                val currentLatLng = LatLng(locationPoint.latitude, locationPoint.longitude)
+                PoiPointUiModel(
+                    id = fixed.id,
+                    latitude = fixed.pos.latitude,
+                    longitude = fixed.pos.longitude,
+                    distance = AMapUtils.calculateLineDistance(currentLatLng, poiLatLng),
+                    isArrived = fixed.isArrived,
+                    arriveDistance = fixed.arriveDistance,
+                    label = fixed.label
+                )
+            }
+            .sortedBy { it.distance }
+            .toList()
+
+        _uiPoiListState.update {
+            sortedCards
+        }
+    }
+
     fun saveCurrentMapPoiList(projectUid: Int, onSaved: () -> Unit) {
         viewModelScope.launch {
             val project = repo.getProjectById(projectUid) ?: return@launch
-            val json = serializePoiList(_currentMapPoiList.value)
+            val json = serializePoiList(mapPoiList)
             repo.update(project.copy(dataJson = json))
             onSaved()
         }
@@ -210,19 +275,19 @@ class PoiProjectViewModel(
     private fun persistCurrentMapPoiList(projectUid: Int) {
         viewModelScope.launch {
             val project = repo.getProjectById(projectUid) ?: return@launch
-            val json = serializePoiList(_currentMapPoiList.value)
+            val json = serializePoiList(mapPoiList)
             repo.update(project.copy(dataJson = json))
         }
     }
 
-    private fun serializePoiList(points: List<PoiPoint>): String {
+    private fun serializePoiList(points: List<PoiPointData>): String {
         val array = JSONArray()
         points.forEach { point ->
             array.put(
                 JSONObject()
                     .put("id", point.id)
-                    .put("latitude", point.latitude)
-                    .put("longitude", point.longitude)
+                    .put("latitude", point.pos.latitude)
+                    .put("longitude", point.pos.longitude)
                     .put("isArrived", point.isArrived)
                     .put("arriveDistance", point.arriveDistance)
                     .put("label", point.label)
@@ -231,26 +296,28 @@ class PoiProjectViewModel(
         return array.toString()
     }
 
-    private fun parsePoiList(json: String): List<PoiPoint> {
-        return runCatching {
+    private fun parsePoiList(json: String): SnapshotStateList<PoiPointData> {
+        val points = SnapshotStateList<PoiPointData>()
+        try {
             val array = JSONArray(json)
-            buildList {
-                for (index in 0 until array.length()) {
-                    val item = array.optJSONObject(index) ?: continue
-                    if (!item.has("latitude") || !item.has("longitude")) continue
-                    add(
-                        PoiPoint(
-                            id = if (item.has("id")) item.optInt("id") else index + 1,
-                            latitude = item.optDouble("latitude"),
-                            longitude = item.optDouble("longitude"),
-                            isArrived = if (item.has("isArrived")) item.optBoolean("isArrived")
-                            else false,
-                            arriveDistance = if (item.has("arriveDistance")) item.optDouble("arriveDistance") else 100.0,
-                            label = if (item.has("label")) item.optString("label") else ""
-                        )
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                if (!item.has("latitude") || !item.has("longitude")) continue
+                points.add(
+                    PoiPointData(
+                        id = if (item.has("id")) item.optInt("id") else index + 1,
+                        pos = PoiPoint(item.optDouble("latitude"), item.optDouble("longitude")),
+                        isArrived = if (item.has("isArrived")) item.optBoolean("isArrived")
+                        else false,
+                        arriveDistance = if (item.has("arriveDistance")) item.optDouble("arriveDistance") else 100.0,
+                        label = if (item.has("label")) item.optString("label") else ""
                     )
-                }
+                )
             }
-        }.getOrDefault(emptyList())
+        } catch (_: Exception) {
+            return SnapshotStateList()
+        }
+
+        return points
     }
 }
