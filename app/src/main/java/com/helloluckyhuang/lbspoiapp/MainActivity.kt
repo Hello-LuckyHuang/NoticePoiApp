@@ -23,6 +23,7 @@ import com.amap.api.maps.MapsInitializer
 import com.helloluckyhuang.lbspoiapp.ui.HomePage
 import com.helloluckyhuang.lbspoiapp.ui.theme.LBSPOIAppTheme
 import com.helloluckyhuang.lbspoiapp.ui.MapPage
+import com.helloluckyhuang.lbspoiapp.ui.SettingPage
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModelFactory
 
@@ -87,6 +88,9 @@ class MainActivity : ComponentActivity() {
                         viewModel = viewModel,
                         onNavigateToMapPage = { uid ->
                             navController.navigate("map_page/$uid")
+                        },
+                        onNavigateToSettingPage = {
+                            navController.navigate("setting_page")
                         }
                     )
                 }
@@ -103,6 +107,13 @@ class MainActivity : ComponentActivity() {
                     MapPage(
                         viewModel = viewModel,
                         projectUid = projectUid,
+                        onNavigateToHomePage = {
+                            navController.popBackStack("main_page", false)
+                        }
+                    )
+                }
+                composable("setting_page") {
+                    SettingPage(
                         onNavigateToHomePage = {
                             navController.popBackStack("main_page", false)
                         }

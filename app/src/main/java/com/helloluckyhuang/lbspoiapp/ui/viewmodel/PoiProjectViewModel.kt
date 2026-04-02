@@ -65,8 +65,6 @@ class PoiProjectViewModel(
     private val notificationChannelId = "poi_notice_channel_important"
     private val notificationChannelName = "POI Important Notice"
     private var nextNotificationId = 1
-    var shouldRequestNotificationPermission by mutableStateOf(false)
-        private set
 
     val projects = repo.projects.stateIn(
         scope = viewModelScope,
@@ -259,16 +257,12 @@ class PoiProjectViewModel(
     private fun showNotification(text: String) {
         val context = PoiApp.instance.applicationContext
         ensureNotificationChannel(context)
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) {
-                shouldRequestNotificationPermission = true
-                return
-            }
+            if (!granted) return
         }
 
         val notification = NotificationCompat.Builder(context, notificationChannelId)
@@ -298,10 +292,6 @@ class PoiProjectViewModel(
             enableVibration(true)
         }
         manager.createNotificationChannel(channel)
-    }
-
-    fun consumeNotificationPermissionRequest() {
-        shouldRequestNotificationPermission = false
     }
 
     // 刷新UI

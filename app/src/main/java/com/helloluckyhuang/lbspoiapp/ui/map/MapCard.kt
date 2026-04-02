@@ -100,23 +100,8 @@ fun MapCard(
     var renameName by remember { mutableStateOf("") }
 
     val context = LocalContext.current
-    var hasNotificationPermission by remember {
-        mutableStateOf(
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        hasNotificationPermission = granted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
-        viewModel.consumeNotificationPermissionRequest()
-    }
 
-    // 权限申请(位置权限、通知权限)
+    // 权限申请(位置权限)
     var hasLocationPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -145,16 +130,6 @@ fun MapCard(
                 )
             )
         }
-    }
-    LaunchedEffect(viewModel.shouldRequestNotificationPermission, hasNotificationPermission) {
-        if (!viewModel.shouldRequestNotificationPermission) return@LaunchedEffect
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasNotificationPermission) {
-            viewModel.consumeNotificationPermissionRequest()
-            return@LaunchedEffect
-        }
-
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     val mapView = remember {

@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,15 +26,18 @@ import androidx.compose.ui.unit.sp
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> Unit) {
+fun HomePage(
+    viewModel: PoiProjectViewModel,
+    onNavigateToMapPage: (uid: Int) -> Unit,
+    onNavigateToSettingPage: () -> Unit
+) {
     val cardList by viewModel.projects.collectAsState()
 
     // 新建按钮弹窗
@@ -66,15 +71,32 @@ fun HomePage(viewModel: PoiProjectViewModel, onNavigateToMapPage: (uid: Int) -> 
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
-        // 添加项目按钮
-        Button(
-            onClick = {
-                showDialog = true
-                inputName = ""
+        // 添加项目按钮 和 设置按钮
+        Row {
+            Button(
+                modifier = Modifier.align(Alignment.CenterVertically),
+                onClick = {
+                    showDialog = true
+                    inputName = ""
+                }
+            ) {
+                Text("添加将去的地方")
             }
-        ) {
-            Text("添加将去的地方")
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(
+                modifier = Modifier.align(Alignment.CenterVertically),
+                onClick = {
+                    onNavigateToSettingPage()
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "设置",
+                    tint = Color.Gray
+                )
+            }
         }
+
 
         Spacer(modifier = Modifier.height(12.dp))
 
