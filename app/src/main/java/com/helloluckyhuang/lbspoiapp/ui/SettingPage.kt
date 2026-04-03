@@ -1,7 +1,6 @@
 package com.helloluckyhuang.lbspoiapp.ui
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,13 +12,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,15 +30,19 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,8 +51,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import com.helloluckyhuang.lbspoiapp.data.DataStoreManager
+import com.helloluckyhuang.lbspoiapp.util.hasBackgroundLocation
 import com.helloluckyhuang.lbspoiapp.util.hasLocationPermission
 import com.helloluckyhuang.lbspoiapp.util.hasPostPermission
+import com.helloluckyhuang.lbspoiapp.util.openBackgroundLocationPermission
+import com.helloluckyhuang.lbspoiapp.util.openFloatFramePermission
+import com.lzf.easyfloat.permission.PermissionUtils
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,16 +84,28 @@ fun SettingPage(
     val initHasPostPermission = remember {
         hasPostPermission(context)
     }
-
     var hasPostPermission by remember { mutableStateOf(initHasPostPermission) }
-
     val postLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasPostPermission = granted
     }
 
-    Column {
+    // 提示弹窗
+    var showBackgroundLocationNotice by remember { mutableStateOf(false) }
+    var showFloatFrameNotice by remember { mutableStateOf(false) }
+
+    // 浮窗开关
+    val scope = rememberCoroutineScope()
+    val switchState by DataStoreManager.getSwitchFlow(context)
+        .collectAsState(initial = false)
+
+    val scrollState = rememberScrollState()
+    Column (
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+    ) {
         TopAppBar(
             title = {
                 Text("设置")
@@ -142,6 +167,57 @@ fun SettingPage(
                     }
                 }
             )
+            SettingCard(
+                title = "后台定位权限申请",
+                text = "申请后台定位权限",
+                content = {
+                    Button(
+                        enabled = !hasLocationPermission || !hasBackgroundLocation(context),
+                        onClick = {
+                            if (!hasLocationPermission) {
+                                locationLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            }
+                            showBackgroundLocationNotice = true
+                        }
+                    ) {
+                        Text("设置")
+                    }
+                }
+            )
+            SettingCard(
+                title = "显示在其他应用上方",
+                text = "申请显示在其他应用上方",
+                content = {
+                    Button(
+                        enabled = !PermissionUtils.checkPermission(context),
+                        onClick = {
+                            showFloatFrameNotice = true
+                        }
+                    ) {
+                        Text("设置")
+                    }
+                }
+            )
+            SettingCard(
+                title = "浮窗开关",
+                text = "是否在后台时显示下一个提醒点浮窗",
+                content = {
+                    Switch(
+                        enabled = PermissionUtils.checkPermission(context),
+                        checked = if (PermissionUtils.checkPermission(context)) switchState else false,
+                        onCheckedChange = {
+                            scope.launch {
+                                DataStoreManager.setSwitch(context, it)
+                            }
+                        }
+                    )
+                }
+            )
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -175,6 +251,48 @@ fun SettingPage(
             }
         }
         Spacer(Modifier.weight(1f))
+    }
+
+    if (showBackgroundLocationNotice) {
+        AlertDialog(
+            onDismissRequest = { showBackgroundLocationNotice = false },
+            title = { Text("后台定位声明") },
+            text = { Text(backGroundLocationNotice) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBackgroundLocationNotice = false
+                    openBackgroundLocationPermission()
+                }) {
+                    Text("设置")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBackgroundLocationNotice = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (showFloatFrameNotice) {
+        AlertDialog(
+            onDismissRequest = { showFloatFrameNotice = false },
+            title = { Text("浮窗声明") },
+            text = { Text(floatFrameNotice) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showFloatFrameNotice = false
+                    openFloatFramePermission()
+                }) {
+                    Text("设置")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFloatFrameNotice = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 

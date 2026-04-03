@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.helloluckyhuang.lbspoiapp.PoiApp
+import com.helloluckyhuang.lbspoiapp.data.DataStoreManager
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
 import com.helloluckyhuang.lbspoiapp.service.LocationService
 import com.helloluckyhuang.lbspoiapp.ui.floatframe.createFloat
@@ -72,6 +73,10 @@ fun HomePage(
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     val haptic = LocalHapticFeedback.current
+
+    // 浮窗开关设置
+    val floatFrameEnabled by DataStoreManager.getSwitchFlow(context)
+        .collectAsState(initial = false)
 
     // 计划的兴趣点项目列表
     Column(
@@ -155,7 +160,7 @@ fun HomePage(
                                     PoiApp.trackingEnabled = true
 
                                     // 如果有后台定位权限，创建距离小窗
-                                    if (PermissionUtils.checkPermission(context) && hasBackgroundLocation(context)) {
+                                    if (floatFrameEnabled && PermissionUtils.checkPermission(context) && hasBackgroundLocation(context)) {
                                         createFloat(PoiApp.instance, poiViewModel)
                                     }
                                 },
@@ -230,18 +235,17 @@ fun HomePage(
                     TextButton(
                         onClick = {
                             showCreateDialog = false
+                        }
+                    ) {
+                        Text("取消")
+                    }
+                    TextButton(
+                        onClick = {
+                            showCreateDialog = false
                             showDeleteDialog = true
                         }
                     ) {
                         Text("删除")
-                    }
-
-                    TextButton(
-                        onClick = {
-                            showCreateDialog = false
-                        }
-                    ) {
-                        Text("取消")
                     }
                 }
             }

@@ -13,3 +13,21 @@ val aboutText = """
     
     2026.4.2
 """.trimIndent()
+
+val backGroundLocationNotice = """
+    后台定位:
+    如果您希望在程序退出到后台时
+    保持定位和接近点提醒
+    请点击确定
+    跳转到下一页设置始终允许访问位置
+    否则，请点击取消
+""".trimIndent()
+
+val floatFrameNotice = """
+    浮窗:
+    如果您希望在程序退出到后台时
+    依然能实时浏览到下一个提醒点的距离
+    请点击确定
+    跳转到下一页设置允许浮窗权限
+    否则，请点击取消
+""".trimIndent()
