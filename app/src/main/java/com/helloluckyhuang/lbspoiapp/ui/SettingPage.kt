@@ -44,7 +44,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import androidx.core.content.ContextCompat
+import com.helloluckyhuang.lbspoiapp.util.hasLocationPermission
+import com.helloluckyhuang.lbspoiapp.util.hasPostPermission
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,14 +57,7 @@ fun SettingPage(
     // 定位权限
     var hasLocationPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
+            hasLocationPermission(context)
         )
     }
     val locationLauncher = rememberLauncherForActivityResult(
@@ -75,14 +69,7 @@ fun SettingPage(
 
     // 通知权限
     val initHasPostPermission = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true
-        }
+        hasPostPermission(context)
     }
 
     var hasPostPermission by remember { mutableStateOf(initHasPostPermission) }

@@ -1,5 +1,7 @@
 package com.helloluckyhuang.lbspoiapp.ui
 
+import android.content.Intent
+import android.os.Build
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
@@ -27,8 +29,15 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.helloluckyhuang.lbspoiapp.PoiApp
 import com.helloluckyhuang.lbspoiapp.data.local.PoiProjectData
+import com.helloluckyhuang.lbspoiapp.service.LocationService
+import com.helloluckyhuang.lbspoiapp.ui.floatframe.createFloat
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
+import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiViewModel
+import com.helloluckyhuang.lbspoiapp.util.hasBackgroundLocation
+import com.lzf.easyfloat.permission.PermissionUtils
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.abs
@@ -39,9 +48,12 @@ import kotlin.random.Random
 @Composable
 fun HomePage(
     viewModel: PoiProjectViewModel,
+    poiViewModel: PoiViewModel,
     onNavigateToMapPage: (uid: Int) -> Unit,
     onNavigateToSettingPage: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     val cardList by viewModel.projects.collectAsState()
 
     // 新建按钮弹窗
@@ -131,6 +143,21 @@ fun HomePage(
                                 onClick = {
                                     // 点击卡片时执行的操作
                                     onNavigateToMapPage(item.uid)
+                                    if (hasBackgroundLocation(context)) {
+                                        ContextCompat.startForegroundService(
+                                            context,
+                                            Intent(context, LocationService::class.java)
+                                        )
+                                    } else {
+                                        PoiApp.locationRepo.startForegroundOnly()
+                                    }
+
+                                    PoiApp.trackingEnabled = true
+
+                                    // 如果有后台定位权限，创建距离小窗
+                                    if (PermissionUtils.checkPermission(context) && hasBackgroundLocation(context)) {
+                                        createFloat(PoiApp.instance, poiViewModel)
+                                    }
                                 },
                                 onLongClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)

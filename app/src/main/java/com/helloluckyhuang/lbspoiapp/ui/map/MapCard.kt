@@ -2,7 +2,6 @@
 
 import android.Manifest
 import android.content.ComponentCallbacks
-import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -41,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 //import com.amap.api.maps2d.AMap
@@ -64,16 +62,15 @@ import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.MyLocationStyle
 import com.helloluckyhuang.lbspoiapp.R
 import com.helloluckyhuang.lbspoiapp.ui.component.SlidingDigitText
-import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPoint
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPointUiModel
-import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
+import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiViewModel
 import kotlinx.coroutines.delay
+import com.helloluckyhuang.lbspoiapp.util.hasLocationPermission
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MapCard(
-    projectUid: Int,
-    viewModel: PoiProjectViewModel
+    viewModel: PoiViewModel
 ) {
     // 地图标记
     val poiMarkersById = remember { mutableMapOf<Int, Marker>() }
@@ -109,14 +106,7 @@ fun MapCard(
     // 权限申请(位置权限)
     var hasLocationPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
+            hasLocationPermission(context)
         )
     }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -149,7 +139,7 @@ fun MapCard(
             map.isMyLocationEnabled = true
             map.moveCamera(CameraUpdateFactory.zoomTo(17F))
             map.setOnMyLocationChangeListener { location ->
-                locationPoint = PoiPoint(location.latitude, location.longitude)
+//                locationPoint = PoiPoint(location.latitude, location.longitude)
             }
             map.setOnMapLongClickListener { point ->
                 showCreateDialog = true
@@ -160,20 +150,20 @@ fun MapCard(
     }
 
     // 定期更新位置
-    LaunchedEffect(Unit) {
-        while (true) {
-            val lat = locationPoint.latitude
-            val lng = locationPoint.longitude
-            val isValidCoordinate = lat in -90.0..90.0 &&
-                    lng in -180.0..180.0 &&
-                    !(lat == 0.0 && lng == 0.0)
-            if (isValidCoordinate) {
-                viewModel.updateLocalPoint(locationPoint)
-                viewModel.searchAndMarkArrivedPoi(projectUid)
-            }
-            delay(3000)
-        }
-    }
+//    LaunchedEffect(Unit) {
+//        while (true) {
+//            val lat = locationPoint.latitude
+//            val lng = locationPoint.longitude
+//            val isValidCoordinate = lat in -90.0..90.0 &&
+//                    lng in -180.0..180.0 &&
+//                    !(lat == 0.0 && lng == 0.0)
+//            if (isValidCoordinate) {
+//                viewModel.updateLocalPoint(locationPoint)
+//                viewModel.searchAndMarkArrivedPoi()
+//            }
+//            delay(3000)
+//        }
+//    }
 
     LaunchedEffect(hasLocationPermission, mapView) {
         mapView.map.isMyLocationEnabled = hasLocationPermission
@@ -547,7 +537,7 @@ fun MapCard(
                     }
                     if (viewModel.getPoiById(editPoiId) != null && viewModel.getPoiById(editPoiId)?.isArrived?:false) {
                         TextButton(onClick = {
-                            viewModel.erasePoiArrived(projectUid, editPoiId)
+                            viewModel.erasePoiArrived(editPoiId)
                             showEditDialog = false
                         }) {
                             Text("重置到达")
@@ -576,7 +566,7 @@ fun MapCard(
                     onClick = {
                         showRenameDialog = false
                         if (renameName.trim().isNotEmpty()) {
-                            viewModel.updatePoiLabel(projectUid,editPoiId, renameName)
+                            viewModel.updatePoiLabel(editPoiId, renameName)
                         }
                         renameName = ""
                     }

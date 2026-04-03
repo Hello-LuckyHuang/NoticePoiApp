@@ -13,19 +13,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.amap.api.maps.MapsInitializer
 import com.helloluckyhuang.lbspoiapp.ui.HomePage
-import com.helloluckyhuang.lbspoiapp.ui.theme.LBSPOIAppTheme
 import com.helloluckyhuang.lbspoiapp.ui.MapPage
 import com.helloluckyhuang.lbspoiapp.ui.SettingPage
+import com.helloluckyhuang.lbspoiapp.ui.theme.LBSPOIAppTheme
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModelFactory
+import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiViewModel
+import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiViewModelFactory
+import com.helloluckyhuang.lbspoiapp.util.hasBackgroundLocation
 
 class MainActivity : ComponentActivity() {
     private val viewModel: PoiProjectViewModel by viewModels {
@@ -33,8 +34,18 @@ class MainActivity : ComponentActivity() {
         PoiProjectViewModelFactory(repo)
     }
 
+    private val poiViewModel: PoiViewModel by viewModels {
+        val repo = (application as PoiApp).poiProjectRepository
+        PoiViewModelFactory(repo)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 设置高德地图条款(直接同意了，反正这是我的校内实习项目)
+//        MapsInitializer.updatePrivacyShow(context, true, true)
+//        MapsInitializer.updatePrivacyAgree(context, true)
+
         enableEdgeToEdge()
         setContent {
             LBSPOIAppTheme {
@@ -45,12 +56,24 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // 从后台回到前台时，若用户本来就在定位，且没有后台权限，则恢复前台定位
+        if (!hasBackgroundLocation(this) && PoiApp.trackingEnabled) {
+            PoiApp.locationRepo.startForegroundOnly()
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // 如果没有背景定位权限，停止定位服务
+        if (!hasBackgroundLocation(this)) {
+            PoiApp.locationRepo.stop()
+        }
+    }
+
     @Composable
     fun Pages(modifier: Modifier = Modifier) {
-        val context = LocalContext.current
-        // 设置高德地图条款(直接同意了，反正这是我的校内实习项目)
-        MapsInitializer.updatePrivacyShow(context, true, true)
-        MapsInitializer.updatePrivacyAgree(context, true)
         // 主界面导航图
         Box (modifier = modifier) {
             val navController = rememberNavController()
@@ -86,6 +109,7 @@ class MainActivity : ComponentActivity() {
                 composable("main_page") {
                     HomePage(
                         viewModel = viewModel,
+                        poiViewModel = poiViewModel,
                         onNavigateToMapPage = { uid ->
                             navController.navigate("map_page/$uid")
                         },
@@ -105,7 +129,7 @@ class MainActivity : ComponentActivity() {
                         return@composable
                     }
                     MapPage(
-                        viewModel = viewModel,
+                        viewModel = poiViewModel,
                         projectUid = projectUid,
                         onNavigateToHomePage = {
                             navController.popBackStack("main_page", false)

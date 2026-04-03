@@ -1,9 +1,12 @@
 package com.helloluckyhuang.lbspoiapp
 
 import android.app.Application
+import androidx.lifecycle.ProcessLifecycleOwner
 import kotlin.getValue
 import androidx.room.Room
+import com.amap.api.maps.MapsInitializer
 import com.helloluckyhuang.lbspoiapp.data.local.AppDatabase
+import com.helloluckyhuang.lbspoiapp.data.repository.LocationRepository
 import com.helloluckyhuang.lbspoiapp.data.repository.PoiProjectRepository
 
 class PoiApp : Application() {
@@ -25,10 +28,23 @@ class PoiApp : Application() {
     companion object {
         lateinit var instance: PoiApp
             private set
+        lateinit var locationRepo: LocationRepository
+
+        // 是否开启定位跟踪
+        var trackingEnabled: Boolean = false
     }
 
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        MapsInitializer.updatePrivacyShow(instance, true, true)
+        MapsInitializer.updatePrivacyAgree(instance, true)
+
+        locationRepo = LocationRepository(this)
+
+        ProcessLifecycleOwner.get().lifecycle.addObserver(
+            AppLifecycleObserver()
+        )
     }
 }
