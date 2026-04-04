@@ -40,10 +40,6 @@ fun MapPage(
             navigationIcon = {
                 IconButton(
                     onClick = {
-                        closeFloat()
-                        // 停止定位跟踪
-                        PoiApp.trackingEnabled = false
-                        PoiApp.locationRepo.stop()
                         viewModel.saveCurrentMapPoiListAndExit {
                             onNavigateToHomePage()
                         }
@@ -61,12 +57,4 @@ fun MapPage(
             viewModel = viewModel
         )
     }
-
-    val location by viewModel.backGroundLocation.collectAsState()
-    Text(
-        text = location?.let {
-            "经度: ${it.second}\n纬度: ${it.first}"
-        } ?: "暂无定位",
-        fontSize = 20.sp
-    )
 }

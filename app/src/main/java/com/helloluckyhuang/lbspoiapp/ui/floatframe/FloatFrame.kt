@@ -49,7 +49,7 @@ fun createFloat(context: Context, poiViewModel: PoiViewModel) {
             val poiList by poiViewModel.uiPoiListState.collectAsState()
             Card (
                 modifier = Modifier
-                    .width(300.dp)
+                    .width(250.dp)
                     .padding(horizontal = 30.dp, vertical = 12.dp)
                     .border(
                         width = 1.dp,
@@ -64,7 +64,7 @@ fun createFloat(context: Context, poiViewModel: PoiViewModel) {
                 val item = poiList.firstOrNull()
                 Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
                     val distance = item?.distance
-                    val color = if (distance != null && distance < item.arriveDistance) Color(0, 128, 0) else Color.Gray
+                    val color = if (distance != null && distance < item.arriveDistance) Color(0, 128, 0) else Color.DarkGray
                     HeightLightIcon(
                         modifier = Modifier.align(Alignment.CenterVertically),
                         normalColor = Color.Gray,
@@ -75,7 +75,7 @@ fun createFloat(context: Context, poiViewModel: PoiViewModel) {
                     Text(
                         modifier = Modifier.align(Alignment.CenterVertically).padding(horizontal = 10.dp, vertical = 12.dp),
                         text = item?.label?:"",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.titleMedium,
                         color = color,
                         textDecoration = if (item==null) TextDecoration.None else if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
                     )

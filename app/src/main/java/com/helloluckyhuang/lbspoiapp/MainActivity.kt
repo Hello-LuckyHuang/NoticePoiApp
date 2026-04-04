@@ -12,15 +12,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.helloluckyhuang.lbspoiapp.ui.HomePage
 import com.helloluckyhuang.lbspoiapp.ui.MapPage
 import com.helloluckyhuang.lbspoiapp.ui.SettingPage
+import com.helloluckyhuang.lbspoiapp.ui.floatframe.closeFloat
 import com.helloluckyhuang.lbspoiapp.ui.theme.LBSPOIAppTheme
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModel
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiProjectViewModelFactory
@@ -142,6 +146,18 @@ class MainActivity : ComponentActivity() {
                             navController.popBackStack("main_page", false)
                         }
                     )
+                }
+            }
+            val backStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = backStackEntry?.destination?.route
+
+            LaunchedEffect(currentRoute) {
+                if (currentRoute == "main_page") {
+                    // 进入主界面时触发
+                    closeFloat()
+                    // 停止定位跟踪
+                    PoiApp.trackingEnabled = false
+                    PoiApp.locationRepo.stop()
                 }
             }
         }

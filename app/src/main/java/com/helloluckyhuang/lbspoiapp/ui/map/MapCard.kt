@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +63,7 @@ import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.MyLocationStyle
 import com.helloluckyhuang.lbspoiapp.R
 import com.helloluckyhuang.lbspoiapp.ui.component.SlidingDigitText
+import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPoint
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPointUiModel
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiViewModel
 import kotlinx.coroutines.delay
@@ -85,7 +87,7 @@ fun MapCard(
     val poiList by viewModel.uiPoiListState.collectAsState()
 
     // 位置坐标
-    var locationPoint = viewModel.locationPoint
+    var locationPoint by remember { mutableStateOf(LatLng(39.900000, 116.4000000)) }
 
     // 新建弹窗
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -130,40 +132,35 @@ fun MapCard(
     val mapView = remember {
         MapView(context).apply {
             onCreate(null)
-            map.uiSettings.isZoomControlsEnabled = true
-            map.uiSettings.isMyLocationButtonEnabled = true
+            map.uiSettings.isZoomControlsEnabled = false
+            map.uiSettings.isMyLocationButtonEnabled = false
             map.myLocationStyle = MyLocationStyle().apply {
-                myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE_NO_CENTER)
+                myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW)
                 interval(2000)
             }
             map.isMyLocationEnabled = true
-            map.moveCamera(CameraUpdateFactory.zoomTo(17F))
+//            map.moveCamera(CameraUpdateFactory.zoomTo(17F))
             map.setOnMyLocationChangeListener { location ->
-//                locationPoint = PoiPoint(location.latitude, location.longitude)
+                val lat = location.latitude
+                val lng = location.longitude
+                if (lat != 0.0 && lng != 0.0 &&
+                    lat in -90.0..90.0 &&
+                    lng in -180.0..180.0) {
+                    locationPoint = LatLng(lat, lng)
+                }
             }
             map.setOnMapLongClickListener { point ->
                 showCreateDialog = true
                 inputName = ""
                 selectPoint = point
             }
+            map.setOnMapTouchListener {
+                map.myLocationStyle = MyLocationStyle().apply {
+                    myLocationType(MyLocationStyle.LOCATION_TYPE_SHOW)
+                }
+            }
         }
     }
-
-    // 定期更新位置
-//    LaunchedEffect(Unit) {
-//        while (true) {
-//            val lat = locationPoint.latitude
-//            val lng = locationPoint.longitude
-//            val isValidCoordinate = lat in -90.0..90.0 &&
-//                    lng in -180.0..180.0 &&
-//                    !(lat == 0.0 && lng == 0.0)
-//            if (isValidCoordinate) {
-//                viewModel.updateLocalPoint(locationPoint)
-//                viewModel.searchAndMarkArrivedPoi()
-//            }
-//            delay(3000)
-//        }
-//    }
 
     LaunchedEffect(hasLocationPermission, mapView) {
         mapView.map.isMyLocationEnabled = hasLocationPermission
@@ -232,6 +229,52 @@ fun MapCard(
             modifier = Modifier.fillMaxSize(),
             factory = { mapView }
         )
+
+        // 地图控件按钮
+        val mapControlModifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(5.dp))
+        val mapControlColors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
+        Column (
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 90.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            MapControlButton(
+                modifier = mapControlModifier,
+                onClick = {
+                    mapView.map?.animateCamera(CameraUpdateFactory.newLatLngZoom(locationPoint, 15f))
+                    mapView.map?.myLocationStyle = MyLocationStyle().apply {
+                        myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW)
+                    }
+                },
+                colors = mapControlColors,
+                painter = painterResource(id = R.drawable.ic_my_location),
+                contentDescription = "定位到当前位置",
+            )
+            Column (verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                MapControlButton(
+                    modifier = mapControlModifier,
+                    onClick = {
+                        mapView.map?.animateCamera(CameraUpdateFactory.zoomIn())
+                    },
+                    colors = mapControlColors,
+                    painter = painterResource(id = R.drawable.ic_zoom_in),
+                    contentDescription = "放大"
+                )
+                MapControlButton(
+                    modifier = mapControlModifier,
+                    onClick = {
+                        mapView.map?.animateCamera(CameraUpdateFactory.zoomOut())
+                    },
+                    colors = mapControlColors,
+                    painter = painterResource(id = R.drawable.ic_zoom_out),
+                    contentDescription = "缩小"
+                )
+            }
+        }
+
 
         // 上拉抽屉
         val sheetState = rememberModalBottomSheetState(
@@ -654,6 +697,30 @@ fun MapLifecycle(
         onDispose {
             lifecycle.removeObserver(mapLifecycleObserver)
             context.unregisterComponentCallbacks(callbacks)
+        }
+    }
+}
+
+@Composable
+fun MapControlButton(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    colors: CardColors = CardDefaults.cardColors(containerColor = Color.White),
+    painter: Painter,
+    contentDescription: String,
+    tint: Color = Color.DarkGray,
+) {
+    Card(
+        modifier = modifier,
+        colors = colors,
+        onClick = onClick
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Icon(
+                painter = painter,
+                contentDescription = contentDescription,
+                tint = tint
+            )
         }
     }
 }

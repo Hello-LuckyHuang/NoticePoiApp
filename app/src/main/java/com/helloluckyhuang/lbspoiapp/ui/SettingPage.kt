@@ -51,7 +51,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import com.helloluckyhuang.lbspoiapp.PoiApp
 import com.helloluckyhuang.lbspoiapp.data.DataStoreManager
+import com.helloluckyhuang.lbspoiapp.ui.floatframe.closeFloat
 import com.helloluckyhuang.lbspoiapp.util.hasBackgroundLocation
 import com.helloluckyhuang.lbspoiapp.util.hasLocationPermission
 import com.helloluckyhuang.lbspoiapp.util.hasPostPermission
@@ -172,7 +174,6 @@ fun SettingPage(
                 text = "申请后台定位权限",
                 content = {
                     Button(
-                        enabled = !hasLocationPermission || !hasBackgroundLocation(context),
                         onClick = {
                             if (!hasLocationPermission) {
                                 locationLauncher.launch(
@@ -194,7 +195,6 @@ fun SettingPage(
                 text = "申请显示在其他应用上方",
                 content = {
                     Button(
-                        enabled = !PermissionUtils.checkPermission(context),
                         onClick = {
                             showFloatFrameNotice = true
                         }
@@ -210,12 +210,28 @@ fun SettingPage(
                     Switch(
                         enabled = PermissionUtils.checkPermission(context),
                         checked = if (PermissionUtils.checkPermission(context)) switchState else false,
-                        onCheckedChange = {
+                        onCheckedChange = { switchState ->
                             scope.launch {
-                                DataStoreManager.setSwitch(context, it)
+                                DataStoreManager.setSwitch(context, switchState)
+                            }
+                            if (!switchState) {
+                                closeFloat()
                             }
                         }
                     )
+                }
+            )
+            SettingCard(
+                title = "停止定位",
+                text = "点击停止定位跟踪",
+                content = {
+                    Button(
+                        onClick = {
+                            PoiApp.locationRepo.stop()
+                        }
+                    ) {
+                        Text("停止")
+                    }
                 }
             )
             Card(
