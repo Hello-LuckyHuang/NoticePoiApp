@@ -403,7 +403,7 @@ fun RandomProjectIcon(
 
 private fun generateStableGradient(seedText: String): List<Color> {
     val seed = seedText.hashCode().absoluteValue
-    val random = Random(seed)
+    val random = Random(75_1050+seed)
 
     // 1. 主色相（0~360）
     val baseHue = random.nextFloat() * 360f

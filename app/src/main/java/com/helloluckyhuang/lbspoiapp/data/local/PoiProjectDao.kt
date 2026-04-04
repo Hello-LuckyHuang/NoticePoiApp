@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface PoiProjectDao {
     // 查询
-    @Query("SELECT * FROM poi_project")
+    @Query("SELECT * FROM poi_project ORDER BY createTime DESC, uid DESC")
     fun getAllProjects(): Flow<List<PoiProjectData>>
 
     // 插入

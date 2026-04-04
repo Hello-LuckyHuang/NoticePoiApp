@@ -21,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.helloluckyhuang.lbspoiapp.ui.AboutPage
 import com.helloluckyhuang.lbspoiapp.ui.HomePage
 import com.helloluckyhuang.lbspoiapp.ui.MapPage
 import com.helloluckyhuang.lbspoiapp.ui.SettingPage
@@ -144,6 +145,16 @@ class MainActivity : ComponentActivity() {
                     SettingPage(
                         onNavigateToHomePage = {
                             navController.popBackStack("main_page", false)
+                        },
+                        onNavigateToAboutPage = {
+                            navController.navigate("about_page")
+                        }
+                    )
+                }
+                composable("about_page") {
+                    AboutPage(
+                        onNavigateToSettingPage = {
+                            navController.popBackStack()
                         }
                     )
                 }

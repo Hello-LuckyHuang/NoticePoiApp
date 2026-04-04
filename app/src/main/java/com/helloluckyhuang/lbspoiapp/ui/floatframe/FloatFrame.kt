@@ -74,7 +74,7 @@ fun createFloat(context: Context, poiViewModel: PoiViewModel) {
                     )
                     Text(
                         modifier = Modifier.align(Alignment.CenterVertically).padding(horizontal = 10.dp, vertical = 12.dp),
-                        text = item?.label?:"",
+                        text = if (item==null) "" else if (item.label.length > 4) "${item.label.take(4)}..." else item.label,
                         style = MaterialTheme.typography.titleMedium,
                         color = color,
                         textDecoration = if (item==null) TextDecoration.None else if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None

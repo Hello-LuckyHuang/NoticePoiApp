@@ -65,7 +65,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingPage(
-    onNavigateToHomePage: () -> Unit
+    onNavigateToHomePage: () -> Unit,
+    onNavigateToAboutPage: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -102,11 +103,9 @@ fun SettingPage(
     val switchState by DataStoreManager.getSwitchFlow(context)
         .collectAsState(initial = false)
 
-    val scrollState = rememberScrollState()
     Column (
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
     ) {
         TopAppBar(
             title = {
@@ -130,8 +129,10 @@ fun SettingPage(
             },
             windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
         )
+
+        val scrollState = rememberScrollState()
         Column (
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(16.dp).verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             SettingCard(
@@ -223,7 +224,7 @@ fun SettingPage(
             )
             SettingCard(
                 title = "停止定位",
-                text = "点击停止定位跟踪",
+                text = "点击立即停止软件定位跟踪",
                 content = {
                     Button(
                         onClick = {
@@ -234,37 +235,19 @@ fun SettingPage(
                     }
                 }
             )
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(
-                        width = 1.dp,
-                        color = Color.LightGray,
-                        shape = RoundedCornerShape(9.dp)
-                    )
-                    .clip(RoundedCornerShape(9.dp)),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                )
-            ) {
-                Column {
-                    Text(modifier = Modifier.padding(10.dp), fontSize = 4.0.em, text = "关于软件")
-                    TextField(
-                        value = aboutText,
-                        onValueChange = {},
-                        readOnly = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            disabledContainerColor = Color.White,
-                            focusedTextColor = Color.Gray,
-                            unfocusedTextColor = Color.Gray,
-                            disabledTextColor = Color.Gray
-                        )
-                    )
+            SettingCard(
+                title = "前往关于",
+                text = "点击前往关于页面",
+                content = {
+                    Button(
+                        onClick = {
+                            onNavigateToAboutPage()
+                        }
+                    ) {
+                        Text("前往")
+                    }
                 }
-            }
+            )
         }
         Spacer(Modifier.weight(1f))
     }
