@@ -62,6 +62,7 @@ import com.amap.api.maps.model.Marker
 import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.MyLocationStyle
 import com.helloluckyhuang.lbspoiapp.R
+import com.helloluckyhuang.lbspoiapp.ui.component.ScrollText
 import com.helloluckyhuang.lbspoiapp.ui.component.SlidingDigitText
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPoint
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiPointUiModel
@@ -139,7 +140,7 @@ fun MapCard(
                 interval(2000)
             }
             map.isMyLocationEnabled = true
-//            map.moveCamera(CameraUpdateFactory.zoomTo(17F))
+            map.moveCamera(CameraUpdateFactory.zoomTo(17F))
             map.setOnMyLocationChangeListener { location ->
                 val lat = location.latitude
                 val lng = location.longitude
@@ -302,44 +303,48 @@ fun MapCard(
                             containerColor = Color.White
                         )
                     ) {
-                        val item = poiList.first()
-                        Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
+                        Box (modifier = Modifier.fillMaxWidth()) {
+                            val item = poiList.first()
                             val distance = item.distance
                             val color = if (distance != null && distance < item.arriveDistance) Color(0, 128, 0) else Color.Gray
-                            HeightLightIcon(
-                                modifier = Modifier.align(Alignment.CenterVertically),
-                                normalColor = Color.Gray,
-                                blinkColor1 = Color.Green,
-                                blinkColor2 = Color.Blue,
-                                isBlinking = distance != null && distance < item.arriveDistance
-                            )
-                            Column(
-                                modifier = Modifier.padding(10.dp)
-                            ) {
-                                SlidingDigitText(
-                                    text = item.label,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = color
+                            Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
+                                HeightLightIcon(
+                                    modifier = Modifier.align(Alignment.CenterVertically),
+                                    normalColor = Color.Gray,
+                                    blinkColor1 = Color.Green,
+                                    blinkColor2 = Color.Blue,
+                                    isBlinking = distance != null && distance < item.arriveDistance
                                 )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Row (horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text(
-                                        text = if (item.isArrived) "已到达" else "未到达",
-                                        style = MaterialTheme.typography.bodyMedium,
+                                Column(
+                                    modifier = Modifier.padding(10.dp)
+                                ) {
+                                    ScrollText(
+                                        modifier = Modifier.fillMaxWidth(0.65f),
+                                        maxChars = 8,
+                                        text = item.label,
+                                        style = MaterialTheme.typography.titleMedium,
                                         color = color
                                     )
-                                    Text(
-                                        text = "距离: ",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = color
-                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Row (horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text(
+                                            text = if (item.isArrived) "已到达" else "未到达",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = color
+                                        )
+                                        Text(
+                                            text = "距离: ",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = color
+                                        )
+                                    }
                                 }
                             }
-                            Spacer(modifier = Modifier.weight(1f))
                             Row (
-                                modifier = Modifier.padding(end = 20.dp).align(Alignment.CenterVertically),
+                                modifier = Modifier.padding(end = 20.dp).align(Alignment.CenterEnd),
                                 verticalAlignment = Alignment.Bottom
                             ) {
+                                Spacer(modifier = Modifier.weight(1f))
                                 SlidingDigitText(
                                     text = if (distance == null) "定位中" else if (distance < 1000) "%.2f".format(distance) else "%.2f".format(distance/1000),
                                     color = color,
@@ -354,6 +359,7 @@ fun MapCard(
                                 )
                             }
                         }
+
                     }
                 }
             }
@@ -423,42 +429,49 @@ fun MapCard(
                                             containerColor = Color.White
                                         )
                                     ) {
-                                        Row(modifier = Modifier.fillMaxSize().padding(start = 16.dp)) {
+                                        Box (
+                                            modifier = Modifier.fillMaxSize()
+                                        ) {
                                             val distance = item.distance
                                             val color = if (distance != null && distance < item.arriveDistance) Color(0, 128, 0) else Color(100, 100, 100)
-                                            HeightLightIcon(
-                                                modifier = Modifier.align(Alignment.CenterVertically),
-                                                normalColor = Color.Gray,
-                                                blinkColor1 = Color.Green,
-                                                blinkColor2 = Color.Blue,
-                                                isBlinking = distance != null && distance < item.arriveDistance
-                                            )
-                                            Column(
-                                                modifier = Modifier.padding(16.dp)
-                                            ) {
-                                                Text(
-                                                    text = item.label,
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    color = color,
-                                                    textDecoration = if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
+                                            Row(modifier = Modifier.fillMaxSize().padding(start = 16.dp)) {
+                                                HeightLightIcon(
+                                                    modifier = Modifier.align(Alignment.CenterVertically),
+                                                    normalColor = Color.Gray,
+                                                    blinkColor1 = Color.Green,
+                                                    blinkColor2 = Color.Blue,
+                                                    isBlinking = distance != null && distance < item.arriveDistance
                                                 )
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                                Text(
-                                                    text = if (item.isArrived) "已到达" else "未到达",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = color
-                                                )
-                                                Text(
-                                                    text = "距离: ",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = color
-                                                )
+                                                Column(
+                                                    modifier = Modifier.padding(16.dp)
+                                                ) {
+                                                    ScrollText(
+                                                        modifier = Modifier.fillMaxWidth(0.6f),
+                                                        maxChars = 7,
+                                                        text = item.label,
+                                                        style = MaterialTheme.typography.titleMedium,
+                                                        color = color,
+                                                        textDecoration = if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
+                                                    )
+                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                    Text(
+                                                        text = if (item.isArrived) "已到达" else "未到达",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = color
+                                                    )
+                                                }
                                             }
-                                            Spacer(modifier = Modifier.weight(1f))
                                             Row (
-                                                modifier = Modifier.padding(end = 20.dp).align(Alignment.CenterVertically),
+                                                modifier = Modifier.padding(end = 20.dp).align(Alignment.CenterEnd),
                                                 verticalAlignment = Alignment.Bottom
                                             ) {
+                                                Spacer(modifier = Modifier.weight(1f))
+                                                Text(
+                                                    text = if (distance == null) "" else "距离",
+                                                    color = color,
+                                                    fontWeight = FontWeight.Light,
+                                                    fontSize = 2.5.em
+                                                )
                                                 Text(
                                                     text = if (distance == null) "定位中" else if (distance < 1000) "%.2f".format(distance) else "%.2f".format(distance/1000),
                                                     color = color,

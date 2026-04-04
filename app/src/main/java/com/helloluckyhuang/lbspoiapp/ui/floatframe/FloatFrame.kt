@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import com.helloluckyhuang.lbspoiapp.ui.component.ScrollText
 import com.helloluckyhuang.lbspoiapp.ui.component.SlidingDigitText
 import com.helloluckyhuang.lbspoiapp.ui.map.HeightLightIcon
 import com.helloluckyhuang.lbspoiapp.ui.viewmodel.PoiViewModel
@@ -61,31 +62,34 @@ fun createFloat(context: Context, poiViewModel: PoiViewModel) {
                     containerColor = Color.White
                 )
             ) {
-                val item = poiList.firstOrNull()
-                Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
+                Box (modifier = Modifier.fillMaxWidth()) {
+                    val item = poiList.firstOrNull()
                     val distance = item?.distance
                     val color = if (distance != null && distance < item.arriveDistance) Color(0, 128, 0) else Color.DarkGray
-                    HeightLightIcon(
-                        modifier = Modifier.align(Alignment.CenterVertically),
-                        normalColor = Color.Gray,
-                        blinkColor1 = Color.Green,
-                        blinkColor2 = Color.Blue,
-                        isBlinking = distance != null && distance < item.arriveDistance
-                    )
-                    Text(
-                        modifier = Modifier.align(Alignment.CenterVertically).padding(horizontal = 10.dp, vertical = 12.dp),
-                        text = if (item==null) "" else if (item.label.length > 4) "${item.label.take(4)}..." else item.label,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = color,
-                        textDecoration = if (item==null) TextDecoration.None else if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
+                    Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
+                        HeightLightIcon(
+                            modifier = Modifier.align(Alignment.CenterVertically),
+                            normalColor = Color.Gray,
+                            blinkColor1 = Color.Green,
+                            blinkColor2 = Color.Blue,
+                            isBlinking = distance != null && distance < item.arriveDistance
+                        )
+                        ScrollText(
+                            modifier = Modifier.width(150.dp).align(Alignment.CenterVertically).padding(horizontal = 10.dp, vertical = 12.dp),
+                            maxChars = 8,
+                            text = item?.label?:"",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = color,
+                            textDecoration = if (item==null) TextDecoration.None else if (item.isArrived) TextDecoration.LineThrough else TextDecoration.None
+                        )
+                    }
                     Row (
-                        modifier = Modifier.padding(end = 20.dp).align(Alignment.CenterVertically),
+                        modifier = Modifier.padding(end = 20.dp).align(Alignment.CenterEnd),
                         verticalAlignment = Alignment.Bottom
                     ) {
+                        Spacer(modifier = Modifier.weight(1f))
                         SlidingDigitText(
-                            text = if (item==null) "没有数据" else if (distance == null) "定位中" else if (distance < 1000) "%.2f".format(distance) else "%.2f".format(distance/1000),
+                            text = if (item==null) "没有数据" else if (distance == null) "定位中" else if (distance < 1000) "%.1f".format(distance) else "%.1f".format(distance/1000),
                             color = color,
                             fontWeight = FontWeight.Light,
                             fontSize = 6.em
