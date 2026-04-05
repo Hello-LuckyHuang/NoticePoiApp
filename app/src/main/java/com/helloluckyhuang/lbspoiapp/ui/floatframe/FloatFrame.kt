@@ -50,8 +50,8 @@ fun createFloat(context: Context, poiViewModel: PoiViewModel) {
             val poiList by poiViewModel.uiPoiListState.collectAsState()
             Card (
                 modifier = Modifier
-                    .width(250.dp)
-                    .padding(horizontal = 30.dp, vertical = 12.dp)
+                    .width(200.dp)
+                    .padding(5.dp)
                     .border(
                         width = 1.dp,
                         color = Color.LightGray,
@@ -75,8 +75,8 @@ fun createFloat(context: Context, poiViewModel: PoiViewModel) {
                             isBlinking = distance != null && distance < item.arriveDistance
                         )
                         ScrollText(
-                            modifier = Modifier.width(150.dp).align(Alignment.CenterVertically).padding(horizontal = 10.dp, vertical = 12.dp),
-                            maxChars = 8,
+                            modifier = Modifier.width(65.dp).align(Alignment.CenterVertically).padding(horizontal = 10.dp, vertical = 12.dp),
+                            maxChars = 4,
                             text = item?.label?:"",
                             style = MaterialTheme.typography.titleMedium,
                             color = color,

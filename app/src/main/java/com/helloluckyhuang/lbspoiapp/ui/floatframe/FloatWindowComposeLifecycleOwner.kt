@@ -13,6 +13,11 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
+/**
+ * EasyFloat的ComposeView代码来自Xiue233在EasyFloat中Issue #1 中分享的代码
+ * https://github.com/kongxiaojun/EasyFloat/issues/1
+ */
+
 class FloatWindowComposeLifecycleOwner :
     LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
 

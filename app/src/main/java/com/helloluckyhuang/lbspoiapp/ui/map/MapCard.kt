@@ -319,7 +319,7 @@ fun MapCard(
                                     modifier = Modifier.padding(10.dp)
                                 ) {
                                     ScrollText(
-                                        modifier = Modifier.fillMaxWidth(0.65f),
+                                        modifier = Modifier.fillMaxWidth(0.6f),
                                         maxChars = 8,
                                         text = item.label,
                                         style = MaterialTheme.typography.titleMedium,
@@ -446,7 +446,7 @@ fun MapCard(
                                                     modifier = Modifier.padding(16.dp)
                                                 ) {
                                                     ScrollText(
-                                                        modifier = Modifier.fillMaxWidth(0.6f),
+                                                        modifier = Modifier.fillMaxWidth(0.55f),
                                                         maxChars = 7,
                                                         text = item.label,
                                                         style = MaterialTheme.typography.titleMedium,
