@@ -179,8 +179,9 @@ fun AboutPage(
 
             AboutCard(
                 title = "开源",
-                text1 = "GPL-3.0",
+                text1 = "GNU General Public License v3.0",
                 onClick = {
+                    openUrl(context, "https://github.com/Hello-LuckyHuang/NoticePoiApp/blob/master/LICENSE")
                 }
             )
         }
