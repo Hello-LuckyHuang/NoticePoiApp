@@ -169,7 +169,10 @@ fun HomePage(
                                     selectedCard = item
                                     showCreateDialog = true
                                 }
-                            )
+                            ),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        )
                     ) {
                         Row(modifier = Modifier.fillMaxSize().padding(start = 16.dp)) {
                             RandomProjectIcon(modifier = Modifier.align(Alignment.CenterVertically), name = item.title)

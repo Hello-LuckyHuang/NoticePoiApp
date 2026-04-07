@@ -544,6 +544,7 @@ fun MapCard(
                         showCreateDialog = false
                         if (inputName.trim().isNotEmpty() && selectPoint != null) {
                             viewModel.addPoiToCurrentMap(selectPoint!!.latitude, selectPoint!!.longitude, inputDistance.toDoubleOrNull() ?: 100.0, inputName)
+                            viewModel.persistCurrentMapPoiList()
                             inputName = ""
                             inputDistance = ""
                         }
@@ -582,6 +583,7 @@ fun MapCard(
                     }
                     TextButton(onClick = {
                         viewModel.deletePoiToCurrentMap(editPoiId)
+                        viewModel.persistCurrentMapPoiList()
                         showEditDialog = false
                     }) {
                         Text("删除")
@@ -594,6 +596,7 @@ fun MapCard(
                     if (viewModel.getPoiById(editPoiId) != null && viewModel.getPoiById(editPoiId)?.isArrived?:false) {
                         TextButton(onClick = {
                             viewModel.erasePoiArrived(editPoiId)
+                            viewModel.persistCurrentMapPoiList()
                             showEditDialog = false
                         }) {
                             Text("重置到达")
@@ -623,6 +626,7 @@ fun MapCard(
                         showRenameDialog = false
                         if (renameName.trim().isNotEmpty()) {
                             viewModel.updatePoiLabel(editPoiId, renameName)
+                            viewModel.persistCurrentMapPoiList()
                         }
                         renameName = ""
                     }

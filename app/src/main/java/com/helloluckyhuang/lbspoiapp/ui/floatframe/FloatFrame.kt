@@ -76,7 +76,7 @@ fun createFloat(context: Context, poiViewModel: PoiViewModel) {
                         )
                         ScrollText(
                             modifier = Modifier.width(65.dp).align(Alignment.CenterVertically).padding(horizontal = 10.dp, vertical = 12.dp),
-                            maxChars = 4,
+                            maxChars = 3,
                             text = item?.label?:"",
                             style = MaterialTheme.typography.titleMedium,
                             color = color,

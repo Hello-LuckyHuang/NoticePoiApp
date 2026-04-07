@@ -149,7 +149,7 @@ class PoiViewModel(
         projectUid = -1
     }
 
-    fun persistCurrentMapPoiList(projectUid: Int) {
+    fun persistCurrentMapPoiList() {
         viewModelScope.launch {
             val project = repo.getProjectById(projectUid) ?: return@launch
             val json = serializePoiList(mapPoiList)
